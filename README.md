@@ -1,6 +1,6 @@
 # Contador de Palavras
 
-Software desktop standalone para contagem padronizada, auditável e replicável de palavras em arquivos PDF, com suporte específico a Mensagens ao Congresso Nacional e outros documentos institucionais. Desenvolvido para apoiar pesquisas acadêmicas em políticas públicas que exigem rigor metodológico na quantificação de corpora documentais.
+Software desktop standalone para contagem padronizada, auditável e replicável de palavras em arquivos PDF, com suporte específico a Mensagens ao Congresso Nacional e outros documentos institucionais. Desenvolvido para apoiar pesquisas acadêmicas em políticas públicas que exigem rigor metodológico na quantificação de corpus documentais.
 
 ![Linguagem](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows-lightgrey)
