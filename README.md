@@ -2,6 +2,7 @@
 
 Software desktop standalone para contagem padronizada, auditável e replicável de palavras em arquivos PDF, com suporte específico a Mensagens ao Congresso Nacional e outros documentos institucionais. Desenvolvido para apoiar pesquisas acadêmicas em políticas públicas que exigem rigor metodológico na quantificação de corpora documentais.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20343113.svg)](https://doi.org/10.5281/zenodo.20343113)
 ![Linguagem](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows-lightgrey)
 ![GUI](https://img.shields.io/badge/GUI-PyQt6-brightgreen)
@@ -249,4 +250,4 @@ MIT — consulte o arquivo [LICENSE](LICENSE) para detalhes.
 
 Caso utilize este software em sua pesquisa, sugere-se a seguinte citação:
 
-> CARVALHO, N. V. de; SANTOS, A. N. dos; LORENZO, H. C. de; GONÇALVES, A. M. *Contador de Palavras: ferramenta para análise quantitativa padronizada de corpora documentais em PDF*. Araraquara: UNIARA, 2026. Disponível em: \<URL do repositório\>.
+> CARVALHO, N. V. de; SANTOS, A. N. dos; LORENZO, H. C. de; GONÇALVES, A. M. *Contador de Palavras: ferramenta para análise quantitativa padronizada de corpora documentais em PDF*. Araraquara: UNIARA, 2026. DOI: [10.5281/zenodo.20343113](https://doi.org/10.5281/zenodo.20343113).
