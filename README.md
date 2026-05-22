@@ -34,17 +34,13 @@ Os resultados são apresentados em interface gráfica moderna e exportáveis em 
 - Documentação integrada (atalho F1) explicando todas as regras e fluxos
 - Aplicação totalmente offline; nenhum dado é enviado a serviços externos
 
-## Capturas de tela
-
-> Adicione aqui screenshots da interface principal, do diálogo de ajuda e de um XLSX exportado.
-
 ---
 
 ## Instalação
 
 ### Opção 1: Usuário final (executável)
 
-> O executável compilado (`.exe`) será disponibilizado em **Releases** futuramente. Por enquanto, utilize a instalação de desenvolvimento.
+> O executável compilado (`.exe`) está disponível em **Releases**.
 
 ### Opção 2: Desenvolvimento (a partir do código)
 
