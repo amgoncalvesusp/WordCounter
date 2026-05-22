@@ -13,28 +13,35 @@ pip install pyinstaller
 echo.
 echo === Building executable ===
 
-set TESS_DIR=C:\Program Files\Tesseract-OCR
-set ADD_DATA_FLAG=
+set "TESS_DIR=C:\Program Files\Tesseract-OCR"
 
 if exist "%TESS_DIR%\tesseract.exe" (
     echo Tesseract detected: bundling into executable
-    set "ADD_DATA_FLAG=--add-data=%TESS_DIR%;tesseract"
+    pyinstaller --noconfirm ^
+        --onefile ^
+        --windowed ^
+        --name "ContadorPalavras" ^
+        --add-data "%TESS_DIR%;tesseract" ^
+        --collect-all PyQt6 ^
+        --collect-all fitz ^
+        --collect-all pytesseract ^
+        --collect-all openpyxl ^
+        --collect-all regex ^
+        src\main.py
 ) else (
     echo WARNING: Tesseract not found at %TESS_DIR%
     echo OCR feature will require user-side Tesseract install.
+    pyinstaller --noconfirm ^
+        --onefile ^
+        --windowed ^
+        --name "ContadorPalavras" ^
+        --collect-all PyQt6 ^
+        --collect-all fitz ^
+        --collect-all pytesseract ^
+        --collect-all openpyxl ^
+        --collect-all regex ^
+        src\main.py
 )
-
-pyinstaller --noconfirm ^
-    --onefile ^
-    --windowed ^
-    --name "ContadorPalavras" ^
-    %ADD_DATA_FLAG% ^
-    --collect-all PyQt6 ^
-    --collect-all fitz ^
-    --collect-all pytesseract ^
-    --collect-all openpyxl ^
-    --collect-all regex ^
-    src\main.py
 
 if %ERRORLEVEL% EQU 0 (
     echo.
