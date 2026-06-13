@@ -1,0 +1,73 @@
+name: Build and release Windows executable
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Tesseract OCR
+        shell: powershell
+        run: |
+          choco install tesseract -y
+          $tessData = "C:\Program Files\Tesseract-OCR\tessdata"
+          New-Item -ItemType Directory -Force -Path $tessData
+          Invoke-WebRequest `
+            -Uri "https://github.com/tesseract-ocr/tessdata/raw/main/por.traineddata" `
+            -OutFile "$tessData\por.traineddata"
+
+      - name: Run tests
+        shell: cmd
+        run: |
+          py -3.11 -m pip install -r requirements-dev.txt
+          py -3.11 -m pytest --cov --cov-report=term
+
+      - name: Build executable
+        shell: cmd
+        run: build.bat
+
+      - name: Rename executable
+        shell: powershell
+        run: |
+          Copy-Item `
+            -LiteralPath "dist\ContadorPalavras.exe" `
+            -Destination "dist\ContadorPalavras-${{ github.ref_name }}.exe"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ContadorPalavras-${{ github.ref_name }}
+          path: dist/ContadorPalavras-${{ github.ref_name }}.exe
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Contador de Palavras ${{ github.ref_name }}
+          body: |
+            ## Novidades
+
+            - Perfil de politica climatica reportada por documento.
+            - Taxonomia editavel de setores e instrumentos climaticos.
+            - Abas XLSX com matriz, evidencias textuais e lacunas do reporte.
+            - Opcao na interface para ligar/desligar a nova analise.
+
+            ## Validacao
+
+            - Testes automatizados executados no workflow.
+            - Executavel Windows gerado com PyInstaller.
+          files: dist/ContadorPalavras-${{ github.ref_name }}.exe
