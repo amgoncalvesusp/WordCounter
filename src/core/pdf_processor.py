@@ -1,27 +1,57 @@
-"""PDF processing orchestrator."""
+"""PDF processing orchestrator.
+
+Extracts text once per PDF, then runs a list of pluggable analyzers over a
+shared :class:`DocumentContext`. Intrinsic extraction fields (confidence,
+observations, excluded pages) are produced here; everything else (metadata,
+word counts, term search, future sentiment, ...) comes from analyzers.
+"""
+
 import io
 from pathlib import Path
-from typing import Dict, List, Optional, Callable, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import fitz
 from PIL import Image
 
-from .word_counter import count_words, count_total
+from .analysis import Analyzer, DocumentContext, build_default_analyzers
 from .corpus_filter import classify_all_pages
-from .metadata_detector import detect_metadata
-from .ocr_engine import needs_ocr, ocr_image, configure_tesseract
-from .term_search import search_all_terms
+from .ocr_engine import configure_tesseract, needs_ocr, ocr_image
 
 
 class PDFProcessor:
-    def __init__(self, enable_ocr: bool = True, ocr_lang: str = "por",
-                 search_terms: Optional[List[Tuple[str, bool]]] = None):
+    def __init__(
+        self,
+        enable_ocr: bool = True,
+        ocr_lang: str = "por",
+        search_terms: Optional[List[Tuple[str, bool]]] = None,
+        analyzers: Optional[List[Analyzer]] = None,
+        detect_sentiment: bool = True,
+        detect_president: bool = True,
+        detect_textmetrics: bool = True,
+        detect_kwic: bool = True,
+        detect_climate_policy: bool = True,
+    ):
         self.enable_ocr = enable_ocr
         self.ocr_lang = ocr_lang
         self.tesseract_available = configure_tesseract() if enable_ocr else False
-        self.search_terms = search_terms or []
+        # Analyzers may be injected; otherwise fall back to the default set built
+        # from the legacy search_terms argument for backward compatibility.
+        self.analyzers = (
+            analyzers
+            if analyzers is not None
+            else build_default_analyzers(
+                search_terms,
+                detect_president=detect_president,
+                detect_sentiment=detect_sentiment,
+                detect_textmetrics=detect_textmetrics,
+                detect_kwic=detect_kwic,
+                detect_climate_policy=detect_climate_policy,
+            )
+        )
 
-    def process(self, pdf_path: str, progress_cb: Optional[Callable[[int, int], None]] = None) -> Dict:
+    def process(
+        self, pdf_path: str, progress_cb: Optional[Callable[[int, int], None]] = None
+    ) -> Dict:
         path = Path(pdf_path)
         doc = fitz.open(pdf_path)
         total_pages = len(doc)
@@ -52,40 +82,41 @@ class PDFProcessor:
         analytical = [p for p in page_classifications if p["is_analytical"]]
         analytical_page_numbers = [p["page_number"] for p in analytical]
 
-        total_words = count_total(pages_text)
-        analytical_words = sum(
-            count_words(pages_text[p["page_number"] - 1]) for p in analytical
-        )
-
-        metadata = detect_metadata(pages_text, path.name)
         pages_with_text = sum(1 for t in pages_text if t.strip())
         pages_problematic = total_pages - pages_with_text
-        confidence = self._assess_confidence(total_pages, pages_with_text, ocr_used_pages)
+        confidence = self._assess_confidence(
+            total_pages, pages_with_text, ocr_used_pages
+        )
 
-        term_results = {}
-        if self.search_terms:
-            term_results = search_all_terms(pages_text, self.search_terms, analytical_page_numbers)
+        ctx = DocumentContext(
+            filename=path.name,
+            pages_text=pages_text,
+            analytical_page_numbers=analytical_page_numbers,
+            total_pages=total_pages,
+            stats={
+                "pages_with_text": pages_with_text,
+                "pages_problematic": pages_problematic,
+                "ocr_pages_count": len(ocr_used_pages),
+            },
+        )
 
-        return {
+        # Intrinsic extraction fields produced by the orchestrator itself.
+        result: Dict = {
             "filename": path.name,
-            "year": metadata["year"],
-            "president": metadata["president"],
-            "document": metadata["document"],
-            "total_pages": total_pages,
-            "pages_with_text": pages_with_text,
-            "pages_problematic": pages_problematic,
-            "ocr_pages_count": len(ocr_used_pages),
             "ocr_pages_list": ocr_used_pages,
-            "words_total": total_words,
-            "words_analytical": analytical_words,
             "excluded_pages": excluded,
             "empty_pages": empty_pages,
             "confidence": confidence,
             "observations": self._build_observations(
                 total_pages, pages_with_text, ocr_used_pages, empty_pages, len(excluded)
             ),
-            "term_results": term_results,
         }
+
+        # Merge every analyzer's flat output into the result dict.
+        for analyzer in self.analyzers:
+            result.update(analyzer.run(ctx))
+
+        return result
 
     def _assess_confidence(self, total, with_text, ocr_pages):
         if total == 0:

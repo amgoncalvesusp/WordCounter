@@ -1,25 +1,60 @@
-"""Detect document metadata from PDF content."""
-import regex
-from typing import Dict, Optional, List
+"""Detect document metadata from PDF content.
+
+The list of heads of state is loaded from ``data/presidents.json`` so the tool
+can be adapted to other countries/corpora without code changes. President
+detection is optional (``detect_president``); year and document type are always
+attempted.
+"""
+
+import json
+import sys
 from collections import Counter
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-PRESIDENTS = [
-    ("Fernando Henrique Cardoso", 1995, 2002, ["Fernando Henrique Cardoso", "FHC"]),
-    ("Luiz Inácio Lula da Silva", 2003, 2010, ["Luiz Inácio Lula", "Lula da Silva"]),
-    ("Dilma Rousseff", 2011, 2016, ["Dilma Rousseff", "Dilma Vana Rousseff"]),
-    ("Michel Temer", 2016, 2018, ["Michel Temer", "Michel Miguel Elias Temer"]),
-    ("Jair Bolsonaro", 2019, 2022, ["Jair Bolsonaro", "Jair Messias Bolsonaro"]),
-    ("Luiz Inácio Lula da Silva", 2023, 2026, ["Luiz Inácio Lula", "Lula da Silva"]),
-]
+import regex
 
-YEAR_PATTERN = regex.compile(r"\b(199\d|20[0-3]\d)\b")
+# Digit lookarounds (not \b) so years glued to underscores/letters in filenames
+# (e.g. "mensagem_2015.pdf") are still detected, while runs of digits are not.
+YEAR_PATTERN = regex.compile(r"(?<!\d)(199\d|20[0-3]\d)(?!\d)")
 MENSAGEM_PATTERN = regex.compile(r"mensagem\s+(?:ao\s+)?congresso", regex.IGNORECASE)
 
+# (canonical, start_year, end_year, variants)
+President = Tuple[str, int, int, List[str]]
 
-def detect_metadata(pages_text: List[str], filename: str = "") -> Dict[str, str]:
+
+def _data_path() -> Path:
+    """Resolve the presidents config path in both dev and frozen (PyInstaller)."""
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS) / "src" / "core" / "data"
+    else:
+        base = Path(__file__).resolve().parent / "data"
+    return base / "presidents.json"
+
+
+def _load_presidents() -> List[President]:
+    """Load heads of state from JSON. Returns an empty list if unavailable."""
+    try:
+        with open(_data_path(), encoding="utf-8") as f:
+            raw = json.load(f)
+        return [
+            (p["canonical"], int(p["start"]), int(p["end"]), list(p["variants"]))
+            for p in raw.get("presidents", [])
+        ]
+    except (OSError, ValueError, KeyError):
+        # Missing/corrupt config must not break the rest of the analysis.
+        return []
+
+
+PRESIDENTS: List[President] = _load_presidents()
+
+
+def detect_metadata(
+    pages_text: List[str], filename: str = "", detect_president: bool = True
+) -> Dict[str, str]:
     head_text = "\n".join(pages_text[:5])
     year = _detect_year(head_text, filename)
-    president = _detect_president(head_text, year)
+    president = _detect_president(head_text, year) if detect_president else None
     document = _detect_document_type(head_text, filename)
     return {
         "year": year or "",

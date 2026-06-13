@@ -1,0 +1,10 @@
+[run]
+source = src/core
+omit =
+    # Vendored third-party code (LeIA / VADER-PT) is covered upstream.
+    src/core/analysis/vendor/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:

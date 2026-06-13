@@ -130,6 +130,20 @@ resiliência
     <li><b style="color:#f38ba8;">Baixo</b> — Menos de 80% das páginas com texto extraído.</li>
 </ul>
 
+<h2>Perfil de política climática</h2>
+
+<p>A opção <b>Perfil de política climática</b> monta uma imagem do que o documento reporta como política climática. A classificação usa uma taxonomia editável de setores e instrumentos, armazenada em <code>src/core/data/climate_policy_taxonomy.json</code>.</p>
+
+<ul>
+    <li><b>Reportado direto</b> — setor ou instrumento aparece em trecho com âncora climática, como clima, emissões, carbono, mitigação ou adaptação.</li>
+    <li><b>Menção indireta</b> — setor ou instrumento aparece no corpus analítico, mas sem enquadramento climático claro no mesmo trecho.</li>
+    <li><b>Não reportado</b> — item esperado na taxonomia não aparece como política climática no documento.</li>
+</ul>
+
+<div class="warn">
+    A saída descreve o que está reportado no documento. Ela não afirma que uma política existe ou inexiste fora do relatório; apenas registra evidências textuais, menções indiretas e lacunas do reporte segundo a taxonomia usada.
+</div>
+
 <h2>Estrutura do XLSX exportado</h2>
 
 <h3>Aba 1: Contagem de Palavras</h3>
@@ -137,6 +151,9 @@ resiliência
 
 <h3>Aba 2: Páginas Excluídas</h3>
 <p>Lista detalhada de cada página excluída do corpus analítico, com motivo da exclusão e número de palavras na página.</p>
+
+<h3>Abas de política climática</h3>
+<p>Quando a opção está ligada, o XLSX inclui <i>Politica Climatica</i>, <i>Evidencias Climaticas</i> e <i>Lacunas Climaticas</i>, com matriz por setor/instrumento, trechos auditáveis e itens esperados que não foram reportados diretamente.</p>
 
 <h2>Atalhos</h2>
 <ul>

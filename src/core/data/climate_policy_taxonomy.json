@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "climate_terms": [
+    "adaptacao",
+    "baixo carbono",
+    "carbono",
+    "clima",
+    "climatica",
+    "climatico",
+    "descarbonizacao",
+    "efeito estufa",
+    "emissao",
+    "emissoes",
+    "gases de efeito estufa",
+    "mudanca do clima",
+    "mudancas climaticas",
+    "mitigacao",
+    "ndc",
+    "resiliencia"
+  ],
+  "sectors": [
+    {
+      "id": "energia",
+      "label": "Energia",
+      "expected": true,
+      "terms": ["energia", "eletrica", "renovavel", "renovaveis", "biocombustivel", "bioenergia", "hidreletrica", "solar", "eolica"]
+    },
+    {
+      "id": "transporte",
+      "label": "Transporte",
+      "expected": true,
+      "terms": ["transporte", "mobilidade", "frota", "veiculos", "ferrovia", "rodovia", "logistica"]
+    },
+    {
+      "id": "agropecuaria",
+      "label": "Agropecuaria",
+      "expected": true,
+      "terms": ["agropecuaria", "agricultura", "pecuaria", "rural", "safra", "pastagem", "plantio direto"]
+    },
+    {
+      "id": "florestas_uso_da_terra",
+      "label": "Florestas e uso da terra",
+      "expected": true,
+      "terms": ["floresta", "florestas", "desmatamento", "queimada", "amazonia", "cerrado", "restauracao florestal", "uso da terra"]
+    },
+    {
+      "id": "industria",
+      "label": "Industria",
+      "expected": true,
+      "terms": ["industria", "industrial", "cimento", "siderurgia", "processos industriais"]
+    },
+    {
+      "id": "residuos",
+      "label": "Residuos",
+      "expected": true,
+      "terms": ["residuo", "residuos", "saneamento", "aterro", "reciclagem", "metano"]
+    },
+    {
+      "id": "adaptacao",
+      "label": "Adaptacao",
+      "expected": true,
+      "terms": ["adaptacao", "resiliencia", "risco climatico", "desastre", "defesa civil", "seca", "enchente"]
+    },
+    {
+      "id": "governanca",
+      "label": "Governanca climatica",
+      "expected": true,
+      "terms": ["governanca", "plano clima", "comite", "conselho", "inventario", "monitoramento", "transparencia"]
+    }
+  ],
+  "instruments": [
+    {
+      "id": "planejamento",
+      "label": "Planejamento",
+      "expected": true,
+      "terms": ["plano", "programa", "estrategia", "meta", "diretriz", "politica nacional"]
+    },
+    {
+      "id": "regulacao",
+      "label": "Regulacao",
+      "expected": true,
+      "terms": ["lei", "decreto", "norma", "regulacao", "regulamentacao", "licenciamento", "padrao"]
+    },
+    {
+      "id": "comando_controle",
+      "label": "Comando e controle",
+      "expected": true,
+      "terms": ["fiscalizacao", "controle", "multa", "embargo", "combate ao desmatamento", "monitoramento"]
+    },
+    {
+      "id": "financiamento",
+      "label": "Financiamento",
+      "expected": true,
+      "terms": ["credito", "financiamento", "fundo", "investimento", "bndes", "subsidio", "incentivo"]
+    },
+    {
+      "id": "instrumento_economico",
+      "label": "Instrumentos economicos",
+      "expected": true,
+      "terms": ["mercado de carbono", "precificacao", "tributacao", "pagamento por servicos ambientais", "psa", "credito de carbono"]
+    },
+    {
+      "id": "informacao_monitoramento",
+      "label": "Informacao e monitoramento",
+      "expected": true,
+      "terms": ["inventario", "sistema de informacao", "monitoramento", "relatorio", "transparencia", "dados"]
+    },
+    {
+      "id": "pesquisa_inovacao",
+      "label": "Pesquisa e inovacao",
+      "expected": true,
+      "terms": ["pesquisa", "inovacao", "tecnologia", "desenvolvimento tecnologico", "ciencia"]
+    },
+    {
+      "id": "cooperacao_internacional",
+      "label": "Cooperacao internacional",
+      "expected": true,
+      "terms": ["cooperacao internacional", "acordo internacional", "paris", "convencao do clima", "financiamento internacional"]
+    }
+  ]
+}

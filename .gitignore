@@ -6,5 +6,9 @@ dist/
 *.spec
 .venv/
 venv/
+venv_build/
+.coverage
+.pytest_cache/
+.ruff_cache/
 gen_files.py
 gen_gui.py

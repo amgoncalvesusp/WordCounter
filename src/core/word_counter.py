@@ -1,21 +1,26 @@
 """Word counting engine per ChatGPT prompt specification."""
+
 import regex
 from typing import List
 
 WORD_PATTERN = regex.compile(r"\p{L}+(?:[-‐-―]\p{L}+)*", regex.UNICODE)
-ROMAN_NUMERAL = regex.compile(r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$")
+ROMAN_NUMERAL = regex.compile(
+    r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$"
+)
 VALID_SINGLE_CHARS = {"a", "e", "o", "y", "i", "u"}
 
 
-def count_words(text: str) -> int:
+def tokenize(text: str) -> List[str]:
+    """Return the list of valid word tokens (same criteria as count_words)."""
     if not text:
-        return 0
-    count = 0
-    for match in WORD_PATTERN.finditer(text):
-        token = match.group(0)
-        if _is_valid_word(token):
-            count += 1
-    return count
+        return []
+    return [
+        m.group(0) for m in WORD_PATTERN.finditer(text) if _is_valid_word(m.group(0))
+    ]
+
+
+def count_words(text: str) -> int:
+    return len(tokenize(text))
 
 
 def _is_valid_word(token: str) -> bool:

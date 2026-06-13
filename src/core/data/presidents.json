@@ -1,0 +1,41 @@
+{
+  "_comment": "Heads of state for president detection. Edit to adapt the tool to other countries/corpora. 'start'/'end' are 4-digit mandate years (YYYY); 'variants' are name spellings matched case-insensitively in the document head.",
+  "presidents": [
+    {
+      "canonical": "Fernando Henrique Cardoso",
+      "start": 1995,
+      "end": 2002,
+      "variants": ["Fernando Henrique Cardoso", "FHC"]
+    },
+    {
+      "canonical": "Luiz Inácio Lula da Silva",
+      "start": 2003,
+      "end": 2010,
+      "variants": ["Luiz Inácio Lula", "Lula da Silva"]
+    },
+    {
+      "canonical": "Dilma Rousseff",
+      "start": 2011,
+      "end": 2016,
+      "variants": ["Dilma Rousseff", "Dilma Vana Rousseff"]
+    },
+    {
+      "canonical": "Michel Temer",
+      "start": 2016,
+      "end": 2018,
+      "variants": ["Michel Temer", "Michel Miguel Elias Temer"]
+    },
+    {
+      "canonical": "Jair Bolsonaro",
+      "start": 2019,
+      "end": 2022,
+      "variants": ["Jair Bolsonaro", "Jair Messias Bolsonaro"]
+    },
+    {
+      "canonical": "Luiz Inácio Lula da Silva",
+      "start": 2023,
+      "end": 2026,
+      "variants": ["Luiz Inácio Lula", "Lula da Silva"]
+    }
+  ]
+}

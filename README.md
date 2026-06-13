@@ -28,8 +28,13 @@ Os resultados são apresentados em interface gráfica moderna e exportáveis em 
 - Processamento assíncrono (não trava a interface) com barra de progresso por arquivo e geral
 - OCR automático via Tesseract para PDFs escaneados (idioma português)
 - Detecção heurística de páginas pré-textuais (ficha catalográfica, sumário, expediente, lista de ministros etc.)
-- Detecção automática de metadados a partir do conteúdo do PDF
+- Detecção automática de metadados (ano, tipo de documento) a partir do conteúdo do PDF
+- Detecção de presidente **opcional** e configurável via `data/presidents.json` (adaptável a outros países/períodos)
 - Busca de palavras e expressões com suporte a busca exata entre aspas
+- Análise de sentimento em português (LeIA / VADER-PT) por sentença, com detalhamento exportável para análise de conteúdo e núcleos de significação
+- Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud) e frequência de palavras-chave (com aba detalhada no XLSX)
+- Concordância KWIC: contexto ao redor de cada ocorrência dos termos de busca (aba "Concordância (KWIC)"), a unidade de contexto da análise de conteúdo
+- Perfil de política climática: matriz de setores, instrumentos, evidências textuais e lacunas do que cada documento reporta como política climática
 - Exportação em XLSX formatado com cabeçalho estilizado, congelamento de painéis e linhas alternadas
 - Documentação integrada (atalho F1) explicando todas as regras e fluxos
 - Aplicação totalmente offline; nenhum dado é enviado a serviços externos
@@ -140,6 +145,103 @@ O software identifica automaticamente, com base em palavras-chave e heurísticas
 
 A aba *Páginas Excluídas* do arquivo XLSX exportado contém a lista completa e o motivo de cada exclusão, permitindo auditoria manual.
 
+### Concordância (KWIC)
+
+Para cada termo de busca, a opção **Concordância (KWIC)** (*Keyword-In-Context*,
+ligada por padrão) registra o **contexto** ao redor de cada ocorrência — algumas
+palavras à esquerda, o termo, e algumas palavras à direita. Diferente da
+contagem, é uma saída **qualitativa**: permite ler cada ocorrência em seu
+contexto, a *unidade de contexto* da análise de conteúdo de Bardin.
+
+- Requer ao menos um termo de busca; usa a mesma correspondência da busca de
+  termos (sem distinção de acentos, frases de várias palavras suportadas).
+- A grafia original das palavras de contexto é preservada na exportação.
+- Resultados na aba **"Concordância (KWIC)"** do XLSX: nº do documento, arquivo,
+  página, termo, contexto à esquerda, ocorrência e contexto à direita.
+
+Referência: Bardin, L. (2011). *Análise de Conteúdo*. São Paulo: Edições 70.
+
+### Perfil de política climática
+
+A opção **Perfil de política climática** (ligada por padrão) cria uma "imagem"
+do que o documento reporta como política climática. A análise usa uma taxonomia
+editável em `src/core/data/climate_policy_taxonomy.json`, com setores
+(energia, transportes, agropecuária, florestas, indústria, resíduos, adaptação,
+governança etc.) e instrumentos (planejamento, regulação, comando e controle,
+financiamento, instrumentos econômicos, informação/monitoramento, pesquisa e
+cooperação internacional).
+
+A classificação distingue:
+
+- **Reportado direto**: setor ou instrumento aparece em trecho com âncora
+  climática, como clima, carbono, emissões, mitigação ou adaptação.
+- **Menção indireta**: setor ou instrumento aparece no corpus analítico, mas sem
+  enquadramento climático claro no mesmo trecho.
+- **Não reportado**: item esperado na taxonomia não aparece como política
+  climática no documento.
+
+Essa saída não afirma que a política existe ou inexiste fora do relatório. Ela
+registra o que foi reportado no documento, preservando a ressalva metodológica
+de que instrumentos multissetoriais podem ter relação direta com clima, mas não
+serem incluídos no reporte.
+
+No XLSX, a opção adiciona as abas **"Politica Climatica"**,
+**"Evidencias Climaticas"** e **"Lacunas Climaticas"**.
+
+### Métricas textuais
+
+Conjunto de medidas (caixa "Métricas textuais", ligada por padrão) calculadas
+sobre o corpus analítico e exportadas no XLSX. Voltadas à análise de conteúdo e
+à identificação de núcleos de significação.
+
+- **Legibilidade — Flesch adaptado ao português:**
+  `ILF = 248,835 − 1,015 × (palavras/frases) − 84,6 × (sílabas/palavras)`.
+  Classes: Muito fácil (≥75), Fácil (50–75), Difícil (25–50), Muito difícil (<25).
+  A contagem de sílabas usa heurística de grupos vocálicos (aproximada).
+- **Diversidade lexical:** TTR (tipos/tokens) e Índice de Guiraud
+  (tipos/√tokens), mais estável quanto ao tamanho do texto.
+- **Frequência de palavras-chave:** palavras de conteúdo mais frequentes, após
+  remoção de stopwords (lista editável em `data/stopwords_pt.txt`). As 10 mais
+  frequentes vão para a tabela; as 30 mais frequentes, para a aba
+  **"Frequência de Palavras"** — base quantitativa da análise de conteúdo.
+
+**Referências metodológicas:**
+
+- Martins, T. B. F. et al. (1996). *Readability formulas applied to textbooks in
+  Brazilian Portuguese*. Notas do ICMC-USP, n. 28.
+- Guiraud, P. (1954). *Les caractères statistiques du vocabulaire*. Paris: PUF.
+- Templin, M. (1957). *Certain language skills in children*. University of
+  Minnesota Press.
+- Bardin, L. (2011). *Análise de Conteúdo*. São Paulo: Edições 70.
+
+### Detecção de presidente (opcional)
+
+A identificação do chefe de Estado é **opcional** (caixa de seleção "Detectar
+presidente", ligada por padrão). Desative-a para corpora genéricos — a coluna
+"Presidente" é então omitida da tabela e do XLSX.
+
+A lista é externa ao código, em `src/core/data/presidents.json`, e pode ser
+editada para adaptar a ferramenta a outros países ou períodos:
+
+```json
+{
+  "presidents": [
+    {
+      "canonical": "Nome Oficial",
+      "start": 2023,
+      "end": 2026,
+      "variants": ["Nome Oficial", "Apelido"]
+    }
+  ]
+}
+```
+
+- `start`/`end`: anos do mandato (AAAA), usados para desambiguar pelo ano do documento.
+- `variants`: grafias buscadas (sem distinção de maiúsculas) no início do documento.
+
+Se o arquivo estiver ausente ou inválido, a detecção apenas retorna vazio — o
+restante da análise continua normalmente.
+
 ### Grau de confiança
 
 | Grau   | Critério                                                              |
@@ -147,6 +249,43 @@ A aba *Páginas Excluídas* do arquivo XLSX exportado contém a lista completa e
 | Alto   | ≥95% das páginas com texto extraído; pouco ou nenhum OCR              |
 | Médio  | 80–95% das páginas com texto; ou uso intensivo de OCR                 |
 | Baixo  | Menos de 80% das páginas com texto extraído                           |
+
+### Análise de sentimento
+
+A análise de sentimento usa um modelo **baseado em regras e léxico** (VADER), o
+que garante **transparência e reprodutibilidade**: cada escore é rastreável até a
+palavra e a regra que o produziram — propriedade desejável em pesquisa
+qualitativa interpretativa, ao contrário de modelos de "caixa-preta".
+
+- **Método:** VADER (*Valence Aware Dictionary and sEntiment Reasoner*) — léxico
+  validado por juízes humanos combinado a heurísticas de negação, intensificadores,
+  ênfase em maiúsculas e pontuação. Produz um escore `compound` normalizado em
+  `[-1, +1]`.
+- **Adaptação ao português:** **LeIA** (*Léxico para Inferência Adaptada*), fork do
+  VADER para o português brasileiro (léxico e regras vendorizados no projeto,
+  licença MIT, totalmente offline).
+- **Unidade de análise:** a **sentença**. Cada sentença recebe escore e classe
+  (Positivo `compound ≥ 0,05`; Negativo `≤ -0,05`; Neutro caso contrário). Por
+  documento, são reportados a classe geral, o composto médio e o percentual de
+  sentenças positivas/negativas/neutras.
+- **Saída para análise qualitativa:** o XLSX inclui a aba **"Sentimento
+  (Sentenças)"** com cada sentença, página, escore e classe. Esse detalhamento
+  fornece as **unidades de registro** da Análise de Conteúdo (Bardin) e os
+  **pré-indicadores afetivos** dos Núcleos de Significação (Aguiar & Ozella),
+  permitindo agrupar trechos carregados de afeto em indicadores e núcleos.
+
+A análise pode ser ligada/desligada por uma caixa de seleção na interface.
+
+**Referências metodológicas:**
+
+- Hutto, C. J. & Gilbert, E. E. (2014). *VADER: A Parsimonious Rule-based Model for
+  Sentiment Analysis of Social Media Text*. ICWSM-14. Ann Arbor, MI.
+- Almeida, R. J. de A. *LeIA — Léxico para Inferência Adaptada*.
+  <https://github.com/rafjaa/LeIA>
+- Bardin, L. (2011). *Análise de Conteúdo*. São Paulo: Edições 70.
+- Aguiar, W. M. J. & Ozella, S. (2006; 2013). *Núcleos de significação como
+  instrumento para a apreensão da constituição dos sentidos* / *Apreensão dos
+  sentidos: aprimorando a proposta dos núcleos de significação*.
 
 ### Atalhos de teclado
 
@@ -214,6 +353,23 @@ Se o Tesseract estiver instalado em `C:\Program Files\Tesseract-OCR`, o script o
 Toda a contagem segue regras determinísticas, sem componentes aleatórios. Processar os mesmos PDFs nas mesmas condições produz resultados idênticos. Diferenças entre execuções só podem ocorrer quando o OCR é aplicado a páginas marginais cuja qualidade de imagem varia o reconhecimento.
 
 A documentação completa dos critérios de contagem, exclusão e classificação de confiança está embutida no software (atalho F1) e neste README, garantindo auditabilidade do processo.
+
+---
+
+## Testes
+
+A suíte usa **pytest** e cobre o motor de contagem, a busca de termos, o filtro de
+corpus, a detecção de metadados, os analisadores (incluindo sentimento) e a
+exportação, além de um teste de integração do pipeline completo sobre um PDF
+sintético.
+
+```bash
+pip install -r requirements-dev.txt
+pytest                       # executa a suíte
+pytest --cov=src/core        # com relatório de cobertura
+```
+
+Cobertura atual do código próprio (excluindo a biblioteca vendorizada LeIA): **~92%**.
 
 ---
 
