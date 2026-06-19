@@ -316,7 +316,7 @@ class MainWindow(QMainWindow):
             "Sobre — Contador de Palavras",
             "<h3>Contador de Palavras</h3>"
             "<p>Análise padronizada de PDFs para pesquisa acadêmica.</p>"
-            "<p>Versão 1.1 — com busca de termos e OCR Tesseract.</p>"
+            "<p>Versão 1.3 — análise textual e perfil de política climática.</p>"
             "<hr>"
             "<p><b>Autoria</b></p>"
             "<ul style='margin-left:8px;'>"

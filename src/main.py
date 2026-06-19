@@ -13,15 +13,24 @@ from PyQt6.QtWidgets import QApplication
 from src.gui.main_window import MainWindow
 
 
-def main():
-    app = QApplication(sys.argv)
+def main(argv=None):
+    args = list(sys.argv if argv is None else argv)
+    app = QApplication(args)
     app.setApplicationName("Contador de Palavras")
     app.setOrganizationName("Pesquisa Acadêmica")
 
+    if "--smoke-test" in args:
+        if getattr(sys, "frozen", False):
+            from src.core.ocr_engine import validate_bundled_tesseract
+
+            if not validate_bundled_tesseract():
+                return 2
+        return 0
+
     window = MainWindow()
     window.show()
-    sys.exit(app.exec())
+    return app.exec()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
