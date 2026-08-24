@@ -1,5 +1,6 @@
 """Export results to XLSX using a dynamic, analyzer-driven column schema."""
 
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -21,6 +22,30 @@ THIN_BORDER = Border(
     top=Side(style="thin", color="CCCCCC"),
     bottom=Side(style="thin", color="CCCCCC"),
 )
+INVALID_EXCEL_XML_CHARS_RE = re.compile(
+    r"[\x00-\x08\x0B\x0C\x0E-\x1F]+"
+)
+
+
+def _sanitize_excel_value(value):
+    """Return a value safe to write to an XLSX cell.
+
+    Only XML-invalid control characters are replaced.
+    Valid Unicode, accents, superscripts, tabs and line breaks are preserved.
+    """
+    if not isinstance(value, str):
+        return value
+
+    return INVALID_EXCEL_XML_CHARS_RE.sub(" ", value)
+
+
+def _write_cell(ws, row: int, column: int, value):
+    """Write a sanitized value and return the created cell."""
+    return ws.cell(
+        row=row,
+        column=column,
+        value=_sanitize_excel_value(value),
+    )
 
 
 def export_to_xlsx(
@@ -43,7 +68,7 @@ def export_to_xlsx(
     ws.title = "Contagem de Palavras"
 
     for col_idx, spec in enumerate(column_specs, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=spec.label)
+        cell = _write_cell(ws, row=1, column=col_idx, value=spec.label)
         cell.fill = TERM_HEADER_FILL if spec.group == "term" else HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(
@@ -59,7 +84,7 @@ def export_to_xlsx(
         enriched = {"doc_id": row_idx - 1, **result}
         for col_idx, spec in enumerate(column_specs, start=1):
             value = enriched.get(spec.key, "")
-            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell = _write_cell(ws, row=row_idx, column=col_idx, value=value)
             cell.alignment = Alignment(vertical="center", wrap_text=True)
             cell.border = THIN_BORDER
             if row_idx % 2 == 0:
@@ -107,7 +132,7 @@ def _write_excluded_sheet(wb: Workbook, results: List[Dict]) -> None:
         "Palavras na Página",
     ]
     for col_idx, label in enumerate(headers2, start=1):
-        cell = ws2.cell(row=1, column=col_idx, value=label)
+        cell = _write_cell(ws2, row=1, column=col_idx, value=label)
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -123,11 +148,16 @@ def _write_excluded_sheet(wb: Workbook, results: List[Dict]) -> None:
     detail_row = 2
     for doc_idx, result in enumerate(results, start=1):
         for page in result.get("excluded_pages", []):
-            ws2.cell(row=detail_row, column=1, value=doc_idx)
-            ws2.cell(row=detail_row, column=2, value=result["filename"])
-            ws2.cell(row=detail_row, column=3, value=page["page_number"])
-            ws2.cell(row=detail_row, column=4, value=page["exclusion_reason"])
-            ws2.cell(row=detail_row, column=5, value=page["word_count"])
+            _write_cell(ws2, row=detail_row, column=1, value=doc_idx)
+            _write_cell(ws2, row=detail_row, column=2, value=result["filename"])
+            _write_cell(ws2, row=detail_row, column=3, value=page["page_number"])
+            _write_cell(
+                ws2,
+                row=detail_row,
+                column=4,
+                value=page["exclusion_reason"],
+            )
+            _write_cell(ws2, row=detail_row, column=5, value=page["word_count"])
             for col in range(1, 6):
                 ws2.cell(row=detail_row, column=col).border = THIN_BORDER
                 if detail_row % 2 == 0:
@@ -149,7 +179,7 @@ def _write_sentiment_sheet(wb: Workbook, results: List[Dict]) -> None:
     ws = wb.create_sheet("Sentimento (Sentenças)")
     headers = ["Nº Doc.", "Arquivo", "Página", "Sentença", "Compound", "Classe"]
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = _write_cell(ws, row=1, column=col_idx, value=label)
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -166,12 +196,12 @@ def _write_sentiment_sheet(wb: Workbook, results: List[Dict]) -> None:
     detail_row = 2
     for doc_idx, result in enumerate(results, start=1):
         for sent in result.get("sentiment_sentences", []):
-            ws.cell(row=detail_row, column=1, value=doc_idx)
-            ws.cell(row=detail_row, column=2, value=result["filename"])
-            ws.cell(row=detail_row, column=3, value=sent["page"])
-            ws.cell(row=detail_row, column=4, value=sent["text"])
-            ws.cell(row=detail_row, column=5, value=sent["compound"])
-            ws.cell(row=detail_row, column=6, value=sent["classe"])
+            _write_cell(ws, row=detail_row, column=1, value=doc_idx)
+            _write_cell(ws, row=detail_row, column=2, value=result["filename"])
+            _write_cell(ws, row=detail_row, column=3, value=sent["page"])
+            _write_cell(ws, row=detail_row, column=4, value=sent["text"])
+            _write_cell(ws, row=detail_row, column=5, value=sent["compound"])
+            _write_cell(ws, row=detail_row, column=6, value=sent["classe"])
             ws.cell(row=detail_row, column=4).alignment = Alignment(
                 vertical="center", wrap_text=True
             )
@@ -191,7 +221,7 @@ def _write_keyword_sheet(wb: Workbook, results: List[Dict]) -> None:
     ws = wb.create_sheet("Frequência de Palavras")
     headers = ["Nº Doc.", "Arquivo", "Palavra", "Frequência"]
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = _write_cell(ws, row=1, column=col_idx, value=label)
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -206,10 +236,10 @@ def _write_keyword_sheet(wb: Workbook, results: List[Dict]) -> None:
     detail_row = 2
     for doc_idx, result in enumerate(results, start=1):
         for word, count in result.get("keyword_freq", []):
-            ws.cell(row=detail_row, column=1, value=doc_idx)
-            ws.cell(row=detail_row, column=2, value=result["filename"])
-            ws.cell(row=detail_row, column=3, value=word)
-            ws.cell(row=detail_row, column=4, value=count)
+            _write_cell(ws, row=detail_row, column=1, value=doc_idx)
+            _write_cell(ws, row=detail_row, column=2, value=result["filename"])
+            _write_cell(ws, row=detail_row, column=3, value=word)
+            _write_cell(ws, row=detail_row, column=4, value=count)
             for col in range(1, 5):
                 ws.cell(row=detail_row, column=col).border = THIN_BORDER
                 if detail_row % 2 == 0:
@@ -234,7 +264,7 @@ def _write_kwic_sheet(wb: Workbook, results: List[Dict]) -> None:
         "Contexto à direita",
     ]
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = _write_cell(ws, row=1, column=col_idx, value=label)
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -250,17 +280,17 @@ def _write_kwic_sheet(wb: Workbook, results: List[Dict]) -> None:
     detail_row = 2
     for doc_idx, result in enumerate(results, start=1):
         for line in result.get("kwic", []):
-            ws.cell(row=detail_row, column=1, value=doc_idx)
-            ws.cell(row=detail_row, column=2, value=result["filename"])
-            ws.cell(row=detail_row, column=3, value=line["page"])
-            ws.cell(row=detail_row, column=4, value=line["term"])
-            ws.cell(
-                row=detail_row, column=5, value=line["left"]
+            _write_cell(ws, row=detail_row, column=1, value=doc_idx)
+            _write_cell(ws, row=detail_row, column=2, value=result["filename"])
+            _write_cell(ws, row=detail_row, column=3, value=line["page"])
+            _write_cell(ws, row=detail_row, column=4, value=line["term"])
+            _write_cell(
+                ws, row=detail_row, column=5, value=line["left"]
             ).alignment = right_align
-            ws.cell(
-                row=detail_row, column=6, value=line["keyword"]
+            _write_cell(
+                ws, row=detail_row, column=6, value=line["keyword"]
             ).alignment = center_align
-            ws.cell(row=detail_row, column=7, value=line["right"])
+            _write_cell(ws, row=detail_row, column=7, value=line["right"])
             for col in range(1, 8):
                 ws.cell(row=detail_row, column=col).border = THIN_BORDER
                 if detail_row % 2 == 0:
@@ -280,7 +310,7 @@ def _write_climate_policy_sheets(wb: Workbook, results: List[Dict]) -> None:
 
 def _style_header(ws, headers: List[str], fill=TERM_HEADER_FILL) -> None:
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = _write_cell(ws, row=1, column=col_idx, value=label)
         cell.fill = fill
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -323,14 +353,14 @@ def _write_climate_matrix_sheet(wb: Workbook, results: List[Dict]) -> None:
         for kind in ("sector", "instrument"):
             items = (profile.get(kind) or {}).get("items", {})
             for data in items.values():
-                ws.cell(row=detail_row, column=1, value=doc_idx)
-                ws.cell(row=detail_row, column=2, value=result["filename"])
-                ws.cell(row=detail_row, column=3, value=_kind_label(kind))
-                ws.cell(row=detail_row, column=4, value=data["label"])
-                ws.cell(row=detail_row, column=5, value=data["status"])
-                ws.cell(row=detail_row, column=6, value=data["direct_hits"])
-                ws.cell(row=detail_row, column=7, value=data["indirect_hits"])
-                ws.cell(row=detail_row, column=8, value=data["total_hits"])
+                _write_cell(ws, row=detail_row, column=1, value=doc_idx)
+                _write_cell(ws, row=detail_row, column=2, value=result["filename"])
+                _write_cell(ws, row=detail_row, column=3, value=_kind_label(kind))
+                _write_cell(ws, row=detail_row, column=4, value=data["label"])
+                _write_cell(ws, row=detail_row, column=5, value=data["status"])
+                _write_cell(ws, row=detail_row, column=6, value=data["direct_hits"])
+                _write_cell(ws, row=detail_row, column=7, value=data["indirect_hits"])
+                _write_cell(ws, row=detail_row, column=8, value=data["total_hits"])
                 _style_detail_row(ws, detail_row, len(headers))
                 detail_row += 1
 
@@ -355,14 +385,14 @@ def _write_climate_evidence_sheet(wb: Workbook, results: List[Dict]) -> None:
     detail_row = 2
     for doc_idx, result in enumerate(results, start=1):
         for row in result.get("climate_policy_evidence", []):
-            ws.cell(row=detail_row, column=1, value=doc_idx)
-            ws.cell(row=detail_row, column=2, value=result["filename"])
-            ws.cell(row=detail_row, column=3, value=row["page"])
-            ws.cell(row=detail_row, column=4, value=_kind_label(row["kind"]))
-            ws.cell(row=detail_row, column=5, value=row["label"])
-            ws.cell(row=detail_row, column=6, value=row["term"])
-            ws.cell(row=detail_row, column=7, value=row["status"])
-            ws.cell(row=detail_row, column=8, value=row["snippet"])
+            _write_cell(ws, row=detail_row, column=1, value=doc_idx)
+            _write_cell(ws, row=detail_row, column=2, value=result["filename"])
+            _write_cell(ws, row=detail_row, column=3, value=row["page"])
+            _write_cell(ws, row=detail_row, column=4, value=_kind_label(row["kind"]))
+            _write_cell(ws, row=detail_row, column=5, value=row["label"])
+            _write_cell(ws, row=detail_row, column=6, value=row["term"])
+            _write_cell(ws, row=detail_row, column=7, value=row["status"])
+            _write_cell(ws, row=detail_row, column=8, value=row["snippet"])
             ws.cell(row=detail_row, column=8).alignment = Alignment(
                 vertical="center", wrap_text=True
             )
@@ -381,10 +411,10 @@ def _write_climate_gaps_sheet(wb: Workbook, results: List[Dict]) -> None:
     detail_row = 2
     for doc_idx, result in enumerate(results, start=1):
         for row in result.get("climate_policy_gaps", []):
-            ws.cell(row=detail_row, column=1, value=doc_idx)
-            ws.cell(row=detail_row, column=2, value=result["filename"])
-            ws.cell(row=detail_row, column=3, value=_kind_label(row["kind"]))
-            ws.cell(row=detail_row, column=4, value=row["label"])
-            ws.cell(row=detail_row, column=5, value=row["status"])
+            _write_cell(ws, row=detail_row, column=1, value=doc_idx)
+            _write_cell(ws, row=detail_row, column=2, value=result["filename"])
+            _write_cell(ws, row=detail_row, column=3, value=_kind_label(row["kind"]))
+            _write_cell(ws, row=detail_row, column=4, value=row["label"])
+            _write_cell(ws, row=detail_row, column=5, value=row["status"])
             _style_detail_row(ws, detail_row, len(headers))
             detail_row += 1
