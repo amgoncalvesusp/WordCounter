@@ -4,7 +4,7 @@ import openpyxl
 import pytest
 
 from src.core.analysis import build_column_specs, build_default_analyzers
-from src.core.exporter import export_to_xlsx
+from src.core.exporter import _sanitize_excel_value, export_to_xlsx
 
 pytestmark = pytest.mark.unit
 
@@ -36,6 +36,38 @@ def test_export_creates_main_and_excluded_sheets(tmp_path):
     wb = openpyxl.load_workbook(out)
     assert "Contagem de Palavras" in wb.sheetnames
     assert "Páginas Excluídas" in wb.sheetnames
+
+
+def test_export_sanitizes_illegal_xml_characters(tmp_path):
+    out = tmp_path / "illegal_chars.xlsx"
+
+    bad_text = (
+        "Notas: \x0b¹ Dados consolidados em 30 de setembro de 2012. "
+        "\x0c² O reconhecimento de Reservas Particulares do "
+        "Patrimônio Natural (RPPN)."
+    )
+
+    result = _result(observations=bad_text)
+
+    specs = build_column_specs(
+        build_default_analyzers([], detect_sentiment=False)
+    )
+
+    export_to_xlsx([result], str(out), specs)
+
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Contagem de Palavras"]
+
+    headers = [cell.value for cell in ws[1]]
+    observations_col = headers.index("Observações") + 1
+
+    value = ws.cell(row=2, column=observations_col).value
+
+    assert "\x0b" not in value
+    assert "\x0c" not in value
+    assert "¹" in value
+    assert "²" in value
+    assert "RPPN" in value
 
 
 def test_export_writes_values_in_schema_order(tmp_path):
@@ -110,6 +142,42 @@ def test_kwic_sheet_when_present(tmp_path):
     ws = wb["Concordância (KWIC)"]
     assert ws.cell(row=2, column=4).value == "clima"  # termo
     assert ws.cell(row=2, column=6).value == "clima"  # ocorrência
+
+
+def test_kwic_export_sanitizes_illegal_characters(tmp_path):
+    out = tmp_path / "kwic_illegal.xlsx"
+
+    result = _result(
+        kwic=[
+            {
+                "page": 2,
+                "term": "clima",
+                "left": "política \x0b nacional",
+                "keyword": "clima",
+                "right": "mudança \x0c climática",
+            }
+        ]
+    )
+
+    specs = build_column_specs(
+        build_default_analyzers([], detect_sentiment=False)
+    )
+
+    export_to_xlsx([result], str(out), specs)
+
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Concordância (KWIC)"]
+
+    assert "\x0b" not in ws.cell(2, 5).value
+    assert "\x0c" not in ws.cell(2, 7).value
+    assert "política" in ws.cell(2, 5).value
+    assert "climática" in ws.cell(2, 7).value
+
+
+def test_sanitize_preserves_valid_unicode_and_line_breaks():
+    value = "São Paulo¹\nRPPN²\tclimática\r\nAção"
+
+    assert _sanitize_excel_value(value) == value
 
 
 def test_sentiment_sheet_only_when_present(tmp_path):
