@@ -31,9 +31,11 @@ from src.gui.styles import STYLE
 from src.gui.workers import ProcessingWorker
 from src.gui.help_dialog import HelpDialog
 from src.core.analysis import build_column_specs, build_default_analyzers
-from src.core.exporter import export_to_xlsx
+from src.core.exporter import ExcelExportError, export_to_xlsx
 from src.core.ocr_engine import configure_tesseract
 from src.core.term_search import parse_terms
+
+APP_VERSION = "1.4"
 
 
 class DropZone(QFrame):
@@ -85,7 +87,9 @@ class DropZone(QFrame):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Contador de Palavras — Mensagens Presidenciais")
+        self.setWindowTitle(
+            f"Contador de Palavras — Mensagens Presidenciais (v{APP_VERSION})"
+        )
         self.resize(1280, 860)
         self.setStyleSheet(STYLE)
 
@@ -316,7 +320,7 @@ class MainWindow(QMainWindow):
             "Sobre — Contador de Palavras",
             "<h3>Contador de Palavras</h3>"
             "<p>Análise padronizada de PDFs para pesquisa acadêmica.</p>"
-            "<p>Versão 1.3 — análise textual e perfil de política climática.</p>"
+            f"<p>Versão {APP_VERSION} — análise textual e perfil de política climática.</p>"
             "<hr>"
             "<p><b>Autoria</b></p>"
             "<ul style='margin-left:8px;'>"
@@ -582,5 +586,12 @@ class MainWindow(QMainWindow):
             export_to_xlsx(self.results, path, column_specs)
             QMessageBox.information(self, "Exportado", f"Arquivo salvo em:\n{path}")
             self.status_bar.showMessage(f"Exportado: {path}")
-        except Exception as e:
+        except ExcelExportError as e:
             QMessageBox.critical(self, "Erro ao exportar", str(e))
+        except Exception:
+            QMessageBox.critical(
+                self,
+                "Erro ao exportar",
+                "Não foi possível gerar o arquivo XLSX. "
+                "Verifique o caminho de destino e tente novamente.",
+            )

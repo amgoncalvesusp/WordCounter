@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.exceptions import IllegalCharacterError
 
 from .analysis import ColumnSpec, build_column_specs, build_default_analyzers
 
@@ -27,25 +28,63 @@ INVALID_EXCEL_XML_CHARS_RE = re.compile(
 )
 
 
+class ExcelExportError(RuntimeError):
+    """Raised when a value cannot be safely written to an XLSX worksheet."""
+
+
+def _coerce_excel_text(value):
+    """Convert byte-oriented text to Unicode before sanitizing it."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, bytearray):
+        return bytes(value).decode("utf-8", errors="replace")
+    return value
+
+
 def _sanitize_excel_value(value):
     """Return a value safe to write to an XLSX cell.
 
     Only XML-invalid control characters are replaced.
     Valid Unicode, accents, superscripts, tabs and line breaks are preserved.
     """
+    value = _coerce_excel_text(value)
     if not isinstance(value, str):
         return value
 
     return INVALID_EXCEL_XML_CHARS_RE.sub(" ", value)
 
 
+def _invalid_excel_xml_codepoints(value) -> List[str]:
+    """Return invalid XML code points without retaining document content."""
+    text = _coerce_excel_text(value)
+    if not isinstance(text, str):
+        return []
+
+    return sorted(
+        {
+            f"U+{ord(character):04X}"
+            for character in text
+            if INVALID_EXCEL_XML_CHARS_RE.fullmatch(character)
+        }
+    )
+
+
 def _write_cell(ws, row: int, column: int, value):
     """Write a sanitized value and return the created cell."""
-    return ws.cell(
-        row=row,
-        column=column,
-        value=_sanitize_excel_value(value),
-    )
+    try:
+        return ws.cell(
+            row=row,
+            column=column,
+            value=_sanitize_excel_value(value),
+        )
+    except IllegalCharacterError as exc:
+        codepoints = _invalid_excel_xml_codepoints(value)
+        detail = ", ".join(codepoints) or "não identificados"
+        coordinate = f"{get_column_letter(column)}{row}"
+        raise ExcelExportError(
+            f"Não foi possível exportar a aba '{ws.title}', célula {coordinate}. "
+            f"Caracteres XML inválidos: {detail}."
+        ) from exc
 
 
 def export_to_xlsx(
