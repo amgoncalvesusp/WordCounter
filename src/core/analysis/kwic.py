@@ -14,8 +14,10 @@ original spelling of surrounding words for readability.
 
 from typing import Dict, List, Tuple
 
+import regex
+
 from .base import ColumnSpec, DocumentContext
-from ..term_search import normalize
+from ..term_search import normalize, term_token_patterns
 from ..word_counter import WORD_PATTERN
 
 CONTEXT_WINDOW = 8  # words of context on each side
@@ -39,10 +41,17 @@ class KwicAnalyzer:
         if not self.terms:
             return {"kwic": []}
 
-        # Pre-normalize each term into its token sequence.
+        # Compile each term into its alternatives, one regex per word token,
+        # so wildcards and "|" alternatives behave exactly as in the counts.
         term_seqs = [
-            (term, [normalize(w) for w in term.split() if normalize(w)])
-            for term, _exact in self.terms
+            (
+                term,
+                [
+                    [regex.compile(token) for token in alternative]
+                    for alternative in term_token_patterns(term, exact)
+                ],
+            )
+            for term, exact in self.terms
         ]
 
         lines: List[Dict[str, object]] = []
@@ -51,12 +60,17 @@ class KwicAnalyzer:
                 m.group(0) for m in WORD_PATTERN.finditer(ctx.pages_text[page - 1])
             ]
             norm = [normalize(t) for t in tokens]
-            for term, seq in term_seqs:
-                n = len(seq)
-                if n == 0:
-                    continue
-                for i in range(len(norm) - n + 1):
-                    if norm[i : i + n] == seq:
+            for term, alternatives in term_seqs:
+                for i in range(len(norm)):
+                    for seq in alternatives:
+                        n = len(seq)
+                        if i + n > len(norm):
+                            continue
+                        if not all(
+                            pattern.fullmatch(norm[i + j])
+                            for j, pattern in enumerate(seq)
+                        ):
+                            continue
                         left = " ".join(tokens[max(0, i - self.window) : i])
                         keyword = " ".join(tokens[i : i + n])
                         right = " ".join(tokens[i + n : i + n + self.window])
@@ -71,4 +85,5 @@ class KwicAnalyzer:
                         )
                         if len(lines) >= MAX_LINES_PER_DOC:
                             return {"kwic": lines}
+                        break  # one concordance line per position per term
         return {"kwic": lines}

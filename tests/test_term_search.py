@@ -57,3 +57,24 @@ def test_search_all_terms_total_vs_analytical():
 def test_search_all_terms_exact_label_quoted():
     results = search_all_terms(["efeito estufa"], [("efeito estufa", True)], None)
     assert '"efeito estufa"' in results
+
+
+def test_count_term_wildcard_matches_word_variations():
+    text = "mudanças climáticas e mudança climática e política climática"
+    assert count_term(text, "climátic*") == 3
+    assert count_term(text, "mudanç* climátic*") == 2
+
+
+def test_count_term_alternatives_share_one_label():
+    text = "mudança do clima, mudanças do clima e mudanças climáticas"
+    assert count_term(text, "mudanç* d* clima | mudanç* climátic*") == 3
+
+
+def test_count_term_quoted_term_is_literal():
+    text = "mudanças climáticas e mudança climática"
+    assert count_term(text, "mudança climática", exact=True) == 1
+    assert count_term(text, "mudanç* climátic*", exact=True) == 0
+
+
+def test_count_term_ignores_wildcard_only_term():
+    assert count_term("qualquer texto aqui", "*") == 0

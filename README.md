@@ -30,7 +30,7 @@ Os resultados são apresentados em interface gráfica moderna e exportáveis em 
 - Detecção heurística de páginas pré-textuais (ficha catalográfica, sumário, expediente, lista de ministros etc.)
 - Detecção automática de metadados (ano, tipo de documento) a partir do conteúdo do PDF
 - Detecção de presidente **opcional** e configurável via `data/presidents.json` (adaptável a outros países/períodos)
-- Busca de palavras e expressões com suporte a busca exata entre aspas
+- Busca de palavras e expressões com curinga `*` (plural, masculino/feminino), alternativas com `|` e busca literal entre aspas
 - Análise de sentimento em português (LeIA / VADER-PT) por sentença, com detalhamento exportável para análise de conteúdo e núcleos de significação
 - Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud) e frequência de palavras-chave (com aba detalhada no XLSX)
 - Concordância KWIC: contexto ao redor de cada ocorrência dos termos de busca (aba "Concordância (KWIC)"), a unidade de contexto da análise de conteúdo
@@ -83,34 +83,47 @@ O software detecta o Tesseract na inicialização e habilita/desabilita a opçã
 ### Fluxo básico
 
 1. **Adicionar PDFs**: arraste arquivos para a área pontilhada ou clique em *Adicionar Arquivos*. Pastas também são aceitas (todos os PDFs da pasta são incluídos).
-2. **(Opcional) Definir termos de busca**: digite, no painel direito, um termo por linha. Use aspas para busca exata.
+2. **(Opcional) Definir termos de busca**: digite, no painel direito, um termo por linha. Use `*` para variações (`climátic*`), `|` para agrupar variantes na mesma coluna e aspas para busca literal.
 3. **(Opcional) Marcar OCR**: ative se houver PDFs escaneados (apenas imagem).
 4. **Processar**: clique em *▶ Processar PDFs*.
 5. **Exportar**: ao final, clique em *⬇ Exportar XLSX* para salvar os resultados.
 
 ### Sintaxe da busca de termos
 
-| Entrada                    | Comportamento                                              |
-|----------------------------|------------------------------------------------------------|
-| `clima`                    | Palavra simples, accent-insensitive e case-insensitive     |
-| `mudança do clima`         | Sequência permitindo espaços variáveis entre as palavras   |
-| `"efeito estufa"`          | Busca exata da expressão, entre limites de palavra         |
-| `# comentário`             | Linha ignorada                                             |
-| (linha em branco)          | Ignorada                                                   |
+| Entrada                                 | Comportamento                                                              |
+|-----------------------------------------|----------------------------------------------------------------------------|
+| `clima`                                 | Palavra inteira, accent-insensitive e case-insensitive                     |
+| `climátic*`                             | Curinga: completa o fim da palavra (*climática, climático, climáticas...*) |
+| `mudanç* climátic*`                     | Sequência de palavras, com curinga em qualquer uma delas                   |
+| `mudanç* d* clima \| mudanç* climátic*` | Alternativas somadas em **uma única coluna** do relatório                  |
+| `"efeito estufa"`                       | Busca literal da expressão; `*` e `\|` viram caracteres comuns             |
+| `# comentário`                          | Linha ignorada                                                             |
+| (linha em branco)                       | Ignorada                                                                   |
+
+Não é preciso digitar cada flexão: o curinga `*` cobre plural, masculino e
+feminino, e o `|` agrupa variantes distintas sob o mesmo rótulo. As aspas só
+são necessárias quando se quer a expressão literal, sem variações.
 
 **Exemplo:**
 
 ```text
-# Termos relacionados a mitigação
+# Cada linha vira uma coluna no relatório
+
+# As quatro variantes de "mudança climática" em uma única coluna:
+mudanç* d* clima | mudanç* climátic*
+
+# Variações de gênero e número com o curinga *:
+climátic*
+sustentáve* | sustentabilidade
+
+# Palavras simples:
 carbono
 desmatamento
-"efeito estufa"
-"mudança do clima"
 mitigação
-
-# Termos relacionados a adaptação
 adaptação
-resiliência
+
+# Expressões literais, sem variações:
+"efeito estufa"
 "perdas e danos"
 ```
 

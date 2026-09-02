@@ -67,7 +67,10 @@ def test_climate_policy_sheets_when_present(tmp_path):
                 "term": "energia",
                 "page": 2,
                 "status": "reportado_direto",
-                "snippet": "Plano de energia para reduzir emissoes.",
+                "snippet": (
+                    "Notas: \x0b¹ Dados consolidados em 30 de setembro de 2012. "
+                    "\x0cPlano de energia para reduzir emissões."
+                ),
             }
         ],
         "climate_policy_gaps": [
@@ -87,3 +90,10 @@ def test_climate_policy_sheets_when_present(tmp_path):
     assert "Evidencias Climaticas" in wb.sheetnames
     assert "Lacunas Climaticas" in wb.sheetnames
     assert wb["Evidencias Climaticas"].cell(row=2, column=5).value == "Energia"
+
+    value = wb["Evidencias Climaticas"].cell(row=2, column=8).value
+
+    assert "\x0b" not in value
+    assert "\x0c" not in value
+    assert "¹" in value
+    assert "emissões" in value

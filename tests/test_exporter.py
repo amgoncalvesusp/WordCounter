@@ -2,9 +2,16 @@
 
 import openpyxl
 import pytest
+from openpyxl import Workbook
+from openpyxl.utils.exceptions import IllegalCharacterError
 
 from src.core.analysis import build_column_specs, build_default_analyzers
-from src.core.exporter import export_to_xlsx
+from src.core.exporter import (
+    ExcelExportError,
+    _sanitize_excel_value,
+    _write_cell,
+    export_to_xlsx,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -36,6 +43,38 @@ def test_export_creates_main_and_excluded_sheets(tmp_path):
     wb = openpyxl.load_workbook(out)
     assert "Contagem de Palavras" in wb.sheetnames
     assert "Páginas Excluídas" in wb.sheetnames
+
+
+def test_export_sanitizes_illegal_xml_characters(tmp_path):
+    out = tmp_path / "illegal_chars.xlsx"
+
+    bad_text = (
+        "Notas: \x0b¹ Dados consolidados em 30 de setembro de 2012. "
+        "\x0c² O reconhecimento de Reservas Particulares do "
+        "Patrimônio Natural (RPPN)."
+    )
+
+    result = _result(observations=bad_text)
+
+    specs = build_column_specs(
+        build_default_analyzers([], detect_sentiment=False)
+    )
+
+    export_to_xlsx([result], str(out), specs)
+
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Contagem de Palavras"]
+
+    headers = [cell.value for cell in ws[1]]
+    observations_col = headers.index("Observações") + 1
+
+    value = ws.cell(row=2, column=observations_col).value
+
+    assert "\x0b" not in value
+    assert "\x0c" not in value
+    assert "¹" in value
+    assert "²" in value
+    assert "RPPN" in value
 
 
 def test_export_writes_values_in_schema_order(tmp_path):
@@ -112,6 +151,87 @@ def test_kwic_sheet_when_present(tmp_path):
     assert ws.cell(row=2, column=6).value == "clima"  # ocorrência
 
 
+def test_kwic_export_sanitizes_illegal_characters(tmp_path):
+    out = tmp_path / "kwic_illegal.xlsx"
+
+    result = _result(
+        kwic=[
+            {
+                "page": 2,
+                "term": "clima",
+                "left": "política \x0b nacional",
+                "keyword": "clima",
+                "right": "mudança \x0c climática",
+            }
+        ]
+    )
+
+    specs = build_column_specs(
+        build_default_analyzers([], detect_sentiment=False)
+    )
+
+    export_to_xlsx([result], str(out), specs)
+
+    wb = openpyxl.load_workbook(out)
+    ws = wb["Concordância (KWIC)"]
+
+    assert "\x0b" not in ws.cell(2, 5).value
+    assert "\x0c" not in ws.cell(2, 7).value
+    assert "política" in ws.cell(2, 5).value
+    assert "climática" in ws.cell(2, 7).value
+
+
+def test_sanitize_preserves_valid_unicode_and_line_breaks():
+    value = "São Paulo¹\nRPPN²\tclimática\r\nAção"
+
+    assert _sanitize_excel_value(value) == value
+
+
+def test_sanitize_removes_all_illegal_xml_control_characters():
+    illegal_codepoints = [*range(0x00, 0x09), 0x0B, 0x0C, *range(0x0E, 0x20)]
+    value = "|".join(chr(codepoint) for codepoint in illegal_codepoints)
+
+    sanitized = _sanitize_excel_value(value)
+
+    assert all(chr(codepoint) not in sanitized for codepoint in illegal_codepoints)
+    assert sanitized.count(" ") == len(illegal_codepoints)
+
+
+def test_export_sanitizes_bytes_values(tmp_path):
+    out = tmp_path / "bytes_illegal.xlsx"
+    result = _result(
+        observations="Notas: \x0b¹ Dados preservados.".encode("utf-8")
+    )
+    specs = build_column_specs(
+        build_default_analyzers([], detect_sentiment=False)
+    )
+
+    export_to_xlsx([result], str(out), specs)
+
+    ws = openpyxl.load_workbook(out)["Contagem de Palavras"]
+    observations_col = [cell.value for cell in ws[1]].index("Observações") + 1
+    value = ws.cell(row=2, column=observations_col).value
+
+    assert value == "Notas:  ¹ Dados preservados."
+
+
+def test_write_cell_reports_safe_diagnostics(monkeypatch):
+    ws = Workbook().active
+
+    def fail_with_openpyxl_error(*args, **kwargs):
+        raise IllegalCharacterError("texto confidencial não deve aparecer")
+
+    monkeypatch.setattr(ws, "cell", fail_with_openpyxl_error)
+
+    with pytest.raises(ExcelExportError) as error:
+        _write_cell(ws, row=2, column=3, value="texto \x01 confidencial")
+
+    message = str(error.value)
+    assert "C2" in message
+    assert "U+0001" in message
+    assert "confidencial" not in message
+
+
 def test_sentiment_sheet_only_when_present(tmp_path):
     out = tmp_path / "r.xlsx"
     specs = build_column_specs(build_default_analyzers([], detect_sentiment=False))
@@ -127,3 +247,28 @@ def test_sentiment_sheet_only_when_present(tmp_path):
     )
     export_to_xlsx([result], str(out2))
     assert "Sentimento (Sentenças)" in openpyxl.load_workbook(out2).sheetnames
+
+
+def test_text_starting_with_equals_is_not_written_as_a_formula(tmp_path):
+    """Excel drops such cells: "Registros Removidos: Fórmula de parte de ...xml"."""
+    out = tmp_path / "formula.xlsx"
+    sentence = "= 1,5 °C de aquecimento até 2100."
+    result = _result(
+        observations="=SOMA(A1:A9) citado no documento",
+        sent_n_sentencas=1,
+        sentiment_sentences=[
+            {"page": 1, "text": sentence, "compound": 0.0, "classe": "Neutro"}
+        ],
+    )
+
+    export_to_xlsx([result], str(out))
+
+    ws = openpyxl.load_workbook(out)["Sentimento (Sentenças)"]
+    cell = ws.cell(row=2, column=4)
+    assert cell.value == sentence
+    assert cell.data_type == "s"
+
+
+def test_write_cell_forces_text_type_for_formula_like_values():
+    ws = Workbook().active
+    assert _write_cell(ws, row=1, column=1, value="=A1+1").data_type == "s"
