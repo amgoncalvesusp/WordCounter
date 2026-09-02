@@ -72,16 +72,21 @@ jobs:
           body: |
             ## Correcoes
 
-            - Corrigido conflito de DLLs Qt/Tesseract na inicializacao.
-            - Build isolado com versoes nativas fixadas.
-            - Verificacao automatica do executavel antes da publicacao.
+            - Corrigido o aviso do Excel "Registros Removidos: Formula de parte
+              de /xl/worksheets/sheetN.xml". Trechos extraidos do PDF que comecam
+              com "=" eram gravados como formula e descartados na abertura do
+              arquivo; agora todo texto exportado e gravado como texto.
 
             ## Funcionalidades
 
-            - Perfil de politica climatica reportada por documento.
-            - Taxonomia editavel de setores e instrumentos climaticos.
-            - Abas XLSX com matriz, evidencias textuais e lacunas do reporte.
-            - Opcao na interface para ligar/desligar a nova analise.
+            - Busca de termos com curinga `*`: `climatic*` encontra climatica,
+              climatico, climaticas e climaticos (plural, masculino e feminino).
+            - Busca com alternativas usando `|`: `mudanc* d* clima | mudanc*
+              climatic*` soma todas as variantes em uma unica coluna.
+            - Aspas passam a significar busca literal (sem `*` e sem `|`).
+            - Curingas e alternativas valem tambem na aba de concordancia (KWIC).
+            - Exemplos na interface e ajuda (F1) atualizados, explicando quando
+              usar aspas e como buscar variacoes.
 
             ## Validacao
 

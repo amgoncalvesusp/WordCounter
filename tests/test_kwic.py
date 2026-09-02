@@ -49,3 +49,23 @@ def test_only_searches_analytical_pages():
     lines = KwicAnalyzer([("clima", False)]).run(ctx)["kwic"]
     assert len(lines) == 1
     assert lines[0]["page"] == 2
+
+
+def test_wildcard_term_matches_variations():
+    ctx = DocumentContext("d.pdf", ["mudanças climáticas e mudança climática"], [1], 1)
+    lines = KwicAnalyzer([("mudanç* climátic*", False)]).run(ctx)["kwic"]
+    assert [line["keyword"] for line in lines] == [
+        "mudanças climáticas",
+        "mudança climática",
+    ]
+
+
+def test_alternatives_produce_one_line_per_occurrence():
+    ctx = DocumentContext("d.pdf", ["mudança do clima e mudanças climáticas"], [1], 1)
+    lines = KwicAnalyzer([("mudanç* d* clima | mudanç* climátic*", False)]).run(ctx)[
+        "kwic"
+    ]
+    assert [line["keyword"] for line in lines] == [
+        "mudança do clima",
+        "mudanças climáticas",
+    ]

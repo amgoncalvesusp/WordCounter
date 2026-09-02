@@ -1,4 +1,5 @@
 """In-app help dialog."""
+
 from PyQt6.QtWidgets import QDialog, QHBoxLayout, QPushButton, QTextBrowser, QVBoxLayout
 
 
@@ -40,24 +41,38 @@ HELP_HTML = """
 
 <h3>Regras de sintaxe</h3>
 <ul>
-    <li><b>Palavra simples:</b> <code>clima</code> — conta todas as ocorrências da palavra, ignorando acentos e maiúsculas/minúsculas.</li>
-    <li><b>Expressão sem aspas:</b> <code>mudança do clima</code> — busca a sequência permitindo espaços variáveis entre palavras.</li>
-    <li><b>Expressão com aspas (busca exata):</b> <code>"efeito estufa"</code> — exige correspondência literal da expressão entre limites de palavra.</li>
+    <li><b>Palavra simples:</b> <code>clima</code> — conta todas as ocorrências da palavra inteira, ignorando acentos e maiúsculas/minúsculas. Não encontra <i>climático</i>.</li>
+    <li><b>Curinga <code>*</code> (variações):</b> <code>climátic*</code> — completa o fim da palavra e encontra <i>climática</i>, <i>climático</i>, <i>climáticas</i>, <i>climáticos</i>. Resolve plural e gênero sem digitar cada forma.</li>
+    <li><b>Expressão sem aspas:</b> <code>mudanç* climátic*</code> — busca a sequência de palavras, permitindo espaços variáveis e curinga em qualquer palavra.</li>
+    <li><b>Alternativas com <code>|</code>:</b> <code>mudanç* d* clima | mudanç* climátic*</code> — soma todas as variantes em <b>uma única coluna</b> do relatório.</li>
+    <li><b>Expressão com aspas (busca literal):</b> <code>"efeito estufa"</code> — exige correspondência exata da expressão entre limites de palavra. Dentro das aspas, <code>*</code> e <code>|</code> valem como caracteres comuns.</li>
     <li><b>Linha em branco</b> ou iniciada com <code>#</code> — ignorada (comentário).</li>
 </ul>
 
 <h3>Exemplo de entrada</h3>
-<pre># Termos relacionados a mitigação
+<pre># Cada linha vira uma coluna no relatório
+
+# As quatro variantes de "mudança climática" em uma única coluna:
+mudanç* d* clima | mudanç* climátic*
+
+# Variações de gênero e número com o curinga *:
+climátic*
+sustentáve* | sustentabilidade
+
+# Palavras simples:
 carbono
 desmatamento
-"efeito estufa"
-"mudança do clima"
 mitigação
-
-# Termos relacionados a adaptação
 adaptação
-resiliência
+
+# Expressões literais, sem variações:
+"efeito estufa"
 "perdas e danos"</pre>
+
+<div class="tip">
+    <b>Preciso usar aspas?</b> Não. As aspas servem só quando você quer a expressão <i>literal</i>, sem variações. Para cobrir <i>mudança do clima</i>, <i>mudanças do clima</i>, <i>mudanças climáticas</i> e <i>mudança climática</i> de uma vez, escreva uma linha só:
+    <br><code>mudanç* d* clima | mudanç* climátic*</code>
+</div>
 
 <div class="tip">
     <b>Acentos e maiúsculas:</b> A busca é case-insensitive e accent-insensitive por padrão. <code>clima</code> encontra <i>Clima</i>, <i>CLIMA</i>, <i>clíma</i> (caso ocorra erro de OCR).

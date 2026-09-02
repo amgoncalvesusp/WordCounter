@@ -253,10 +253,11 @@ class MainWindow(QMainWindow):
         self.terms_input = QPlainTextEdit()
         self.terms_input.setPlaceholderText(
             "Um termo por linha. Exemplos:\n\n"
-            "clima\n"
-            "desmatamento\n"
-            '"efeito estufa"           (aspas = busca exata)\n'
-            '"mudança do clima"\n'
+            "clima                                (palavra inteira)\n"
+            "climátic*                            (* = variações: -a/-o/-as/-os)\n"
+            "mudanç* climátic*                    (expressão com variações)\n"
+            "mudanç* d* clima | mudanç* climátic* (| = variantes na mesma coluna)\n"
+            '"efeito estufa"                      (aspas = literal, sem * nem |)\n'
             "# linhas começando com # são ignoradas"
         )
         self.terms_input.setStyleSheet("""
@@ -578,9 +579,7 @@ class MainWindow(QMainWindow):
                 detect_sentiment=getattr(self, "_enable_sentiment", True),
                 detect_textmetrics=getattr(self, "_enable_textmetrics", True),
                 detect_kwic=getattr(self, "_enable_kwic", True),
-                detect_climate_policy=getattr(
-                    self, "_enable_climate_policy", True
-                ),
+                detect_climate_policy=getattr(self, "_enable_climate_policy", True),
             )
             column_specs = build_column_specs(analyzers)
             export_to_xlsx(self.results, path, column_specs)

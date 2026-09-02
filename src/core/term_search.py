@@ -1,7 +1,7 @@
 """Term and phrase search engine for analytical corpus."""
 import regex
 import unicodedata
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def parse_terms(raw_input: str) -> List[Tuple[str, bool]]:
@@ -38,21 +38,65 @@ def normalize(text: str, strip_accents: bool = True) -> str:
     return text
 
 
-def count_term(text: str, term: str, exact: bool = False, strip_accents: bool = True) -> int:
+ALTERNATIVE_SEPARATOR = "|"
+WILDCARD = "*"
+
+
+def _token_pattern(token: str) -> str:
+    """Translate one normalized token into a regex; ``*`` matches any ending."""
+    return "".join(
+        r"\w*" if part == WILDCARD else regex.escape(part)
+        for part in regex.split(r"(\*)", token)
+        if part
+    )
+
+
+def term_token_patterns(
+    term: str, exact: bool = False, strip_accents: bool = True
+) -> List[List[str]]:
+    """Return the alternatives of ``term`` as lists of per-token regex sources.
+
+    Unquoted terms support ``*`` (matches the rest of a word, so ``climatic*``
+    covers climatica/climatico/climaticas) and ``|`` (alternatives counted under
+    a single label). Quoted/exact terms are matched literally.
+    """
+    normalized = normalize(term, strip_accents)
+    alternatives = [normalized] if exact else normalized.split(ALTERNATIVE_SEPARATOR)
+
+    out: List[List[str]] = []
+    for alternative in alternatives:
+        tokens = alternative.split()
+        if not tokens:
+            continue
+        if exact:
+            out.append([regex.escape(token) for token in tokens])
+        elif any(character.isalnum() for character in alternative):
+            # A wildcard-only alternative would match every word in the document.
+            out.append([_token_pattern(token) for token in tokens])
+    return out
+
+
+def _term_regex(term: str, exact: bool, strip_accents: bool) -> Optional[str]:
+    """Build the full search regex for a term, or None when it matches nothing."""
+    alternatives = term_token_patterns(term, exact, strip_accents)
+    if not alternatives:
+        return None
+    body = "|".join(r"\s+".join(tokens) for tokens in alternatives)
+    return r"\b(?:" + body + r")\b"
+
+
+def count_term(
+    text: str, term: str, exact: bool = False, strip_accents: bool = True
+) -> int:
     """Count occurrences of term in text with word boundaries."""
     if not text or not term:
         return 0
 
-    norm_text = normalize(text, strip_accents)
-    norm_term = normalize(term, strip_accents)
+    pattern = _term_regex(term, exact, strip_accents)
+    if pattern is None:
+        return 0
 
-    if exact:
-        pattern = r"\b" + regex.escape(norm_term) + r"\b"
-    else:
-        words = norm_term.split()
-        pattern = r"\b" + r"\s+".join(regex.escape(w) for w in words) + r"\b"
-
-    return len(regex.findall(pattern, norm_text, regex.IGNORECASE))
+    return len(regex.findall(pattern, normalize(text, strip_accents)))
 
 
 def search_all_terms(
