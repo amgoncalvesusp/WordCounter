@@ -402,4 +402,4 @@ MIT — consulte o arquivo [LICENSE](LICENSE) para detalhes.
 
 Caso utilize este software em sua pesquisa, sugere-se a seguinte citação:
 
-> CARVALHO, N. V. de; SANTOS, A. N. dos; LORENZO, H. C. de; GONÇALVES, A. M. *Contador de Palavras: ferramenta para análise quantitativa padronizada de corpus documentais em PDF*. Araraquara: UNIARA, 2026. DOI: [10.5281/zenodo.20343113](https://doi.org/10.5281/zenodo.20343113).
+> MARTINS, N. V. C. de; SANTOS, A. N. dos; LORENZO, H. C. de; GONÇALVES, A. M. *Contador de Palavras: ferramenta para análise quantitativa padronizada de corpus documentais em PDF*. Araraquara: UNIARA, 2026. DOI: [10.5281/zenodo.20343113](https://doi.org/10.5281/zenodo.20343113).
