@@ -72,7 +72,7 @@ def _invalid_excel_xml_codepoints(value) -> List[str]:
 def _write_cell(ws, row: int, column: int, value):
     """Write a sanitized value and return the created cell."""
     try:
-        return ws.cell(
+        cell = ws.cell(
             row=row,
             column=column,
             value=_sanitize_excel_value(value),
@@ -85,6 +85,13 @@ def _write_cell(ws, row: int, column: int, value):
             f"Não foi possível exportar a aba '{ws.title}', célula {coordinate}. "
             f"Caracteres XML inválidos: {detail}."
         ) from exc
+
+    if cell.data_type == "f":
+        # Text extracted from PDFs can start with "=", which openpyxl would write
+        # as a formula; Excel then rejects it ("Registros Removidos: Fórmula").
+        # Everything we export is data, never a formula, so force the text type.
+        cell.data_type = "s"
+    return cell
 
 
 def export_to_xlsx(

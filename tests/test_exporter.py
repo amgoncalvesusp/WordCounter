@@ -247,3 +247,28 @@ def test_sentiment_sheet_only_when_present(tmp_path):
     )
     export_to_xlsx([result], str(out2))
     assert "Sentimento (Sentenças)" in openpyxl.load_workbook(out2).sheetnames
+
+
+def test_text_starting_with_equals_is_not_written_as_a_formula(tmp_path):
+    """Excel drops such cells: "Registros Removidos: Fórmula de parte de ...xml"."""
+    out = tmp_path / "formula.xlsx"
+    sentence = "= 1,5 °C de aquecimento até 2100."
+    result = _result(
+        observations="=SOMA(A1:A9) citado no documento",
+        sent_n_sentencas=1,
+        sentiment_sentences=[
+            {"page": 1, "text": sentence, "compound": 0.0, "classe": "Neutro"}
+        ],
+    )
+
+    export_to_xlsx([result], str(out))
+
+    ws = openpyxl.load_workbook(out)["Sentimento (Sentenças)"]
+    cell = ws.cell(row=2, column=4)
+    assert cell.value == sentence
+    assert cell.data_type == "s"
+
+
+def test_write_cell_forces_text_type_for_formula_like_values():
+    ws = Workbook().active
+    assert _write_cell(ws, row=1, column=1, value="=A1+1").data_type == "s"
