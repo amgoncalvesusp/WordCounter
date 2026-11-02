@@ -53,11 +53,13 @@ jobs:
 
       - name: Prepare release assets and checksum
         shell: powershell
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          $asset = "dist\ContadorPalavras-$env:RELEASE_TAG.exe"
           Copy-Item `
             -LiteralPath "dist\ContadorPalavras.exe" `
-            -Destination "dist\ContadorPalavras-${{ github.ref_name }}.exe"
-          $asset = "dist\ContadorPalavras-${{ github.ref_name }}.exe"
+            -Destination "$asset"
           $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $(Split-Path -Leaf $asset)" | Set-Content `
             -LiteralPath "$asset.sha256" -Encoding ascii
