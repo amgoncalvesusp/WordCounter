@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import List
 
 from PyQt6.QtCore import Qt, QThread
-from PyQt6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeySequence, QShortcut
+from PyQt6.QtGui import QAction, QDragEnterEvent, QDropEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -23,19 +25,23 @@ from PyQt6.QtWidgets import (
     QStatusBar,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from src.gui.styles import STYLE
 from src.gui.workers import ProcessingWorker
-from src.gui.help_dialog import HelpDialog
+from src.gui.help_dialog import create_help_widget
+from src.gui.legislative_tab import LegislativeTab
+from src.gui.pet_tab import PetTab
 from src.core.analysis import build_column_specs, build_default_analyzers
 from src.core.exporter import ExcelExportError, export_to_xlsx
 from src.core.ocr_engine import configure_tesseract
+from src.core.pet_statistics import analyze_series
 from src.core.term_search import parse_terms
 
-APP_VERSION = "1.4"
+APP_VERSION = "1.6"
 
 
 class DropZone(QFrame):
@@ -88,7 +94,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(
-            f"Contador de Palavras — Mensagens Presidenciais (v{APP_VERSION})"
+            f"Contador de Palavras — Análise textual e PET (v{APP_VERSION})"
         )
         self.resize(1280, 860)
         self.setStyleSheet(STYLE)
@@ -116,12 +122,12 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu("&Arquivo")
         act_add = QAction("Adicionar PDFs...", self)
         act_add.setShortcut("Ctrl+O")
-        act_add.triggered.connect(self.browse_files)
+        act_add.triggered.connect(self.browse_pdfs)
         file_menu.addAction(act_add)
 
         act_export = QAction("Exportar XLSX...", self)
         act_export.setShortcut("Ctrl+E")
-        act_export.triggered.connect(self.export_results)
+        act_export.triggered.connect(self.export_current)
         file_menu.addAction(act_export)
 
         file_menu.addSeparator()
@@ -141,8 +147,10 @@ class MainWindow(QMainWindow):
         help_menu.addAction(act_about)
 
     def _build_ui(self):
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
         central = QWidget()
-        self.setCentralWidget(central)
+        self.tabs.addTab(central, "PDFs")
         main_layout = QVBoxLayout(central)
         main_layout.setContentsMargins(20, 14, 20, 14)
         main_layout.setSpacing(10)
@@ -208,13 +216,13 @@ class MainWindow(QMainWindow):
         file_row.addWidget(self.btn_add)
         file_row.addWidget(self.btn_clear)
         file_row.addStretch()
-        file_row.addWidget(self.president_checkbox)
-        file_row.addWidget(self.textmetrics_checkbox)
-        file_row.addWidget(self.climate_policy_checkbox)
-        file_row.addWidget(self.kwic_checkbox)
-        file_row.addWidget(self.sentiment_checkbox)
-        file_row.addWidget(self.ocr_checkbox)
         main_layout.addLayout(file_row)
+        options = QGridLayout()
+        for i, checkbox in enumerate((self.president_checkbox, self.textmetrics_checkbox,
+                                      self.climate_policy_checkbox, self.kwic_checkbox,
+                                      self.sentiment_checkbox, self.ocr_checkbox)):
+            options.addWidget(checkbox, i // 2, i % 2)
+        main_layout.addLayout(options)
 
         self.btn_add.clicked.connect(self.browse_files)
         self.btn_clear.clicked.connect(self.clear_files)
@@ -291,9 +299,21 @@ class MainWindow(QMainWindow):
         self.btn_export.clicked.connect(self.export_results)
         action_row.addWidget(self.btn_process)
         action_row.addWidget(self.btn_cancel)
+        self.pdf_pet_metric = QComboBox()
+        self.pdf_pet_metric.setMaximumWidth(250)
+        self.pdf_pet_metric.setToolTip("Escolha a contagem anual. Ocorrências de termos não são percentual de texto climático.")
+        self.btn_pdf_pet = QPushButton("Enviar contagens para PET")
+        self.btn_pdf_pet.setEnabled(False)
+        self.btn_pdf_pet.clicked.connect(self.send_pdf_to_pet)
         action_row.addStretch()
         action_row.addWidget(self.btn_export)
         main_layout.addLayout(action_row)
+        pet_row = QHBoxLayout()
+        pet_row.addWidget(QLabel("Série dos PDFs:"))
+        pet_row.addWidget(self.pdf_pet_metric)
+        pet_row.addWidget(self.btn_pdf_pet)
+        pet_row.addStretch()
+        main_layout.addLayout(pet_row)
 
         self.progress = QProgressBar()
         self.progress.setVisible(False)
@@ -311,17 +331,82 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Pronto. Pressione F1 para ajuda.")
 
+        self.legislative_tab = LegislativeTab(self)
+        self.pet_tab = PetTab(self)
+        self.help_tab = create_help_widget(self)
+        self.tabs.addTab(self.legislative_tab, "Legislativo")
+        self.tabs.addTab(self.pet_tab, "Séries PET")
+        self.tabs.addTab(self.help_tab, "Como usar")
+        self.legislative_tab.series_requested.connect(self._open_pet_series)
+
     def show_help(self):
-        dlg = HelpDialog(self)
-        dlg.exec()
+        self.tabs.setCurrentWidget(self.help_tab)
+
+    def browse_pdfs(self):
+        self.tabs.setCurrentIndex(0)
+        self.browse_files()
+
+    def export_current(self):
+        current = self.tabs.currentWidget()
+        if current in (self.legislative_tab, self.pet_tab):
+            current.export_results()
+        elif self.tabs.currentIndex() == 0:
+            self.export_results()
+
+    def _open_pet_series(self, points, label, unit):
+        self.pet_tab.set_series(points, label, unit)
+        self.pet_tab.import_parameters = {
+            **self.legislative_tab.analysis_parameters(), "origin": "Legislativo",
+            "house": self.legislative_tab.house_for_pet.currentText(),
+        }
+        self.tabs.setCurrentWidget(self.pet_tab)
+
+    def _update_pdf_pet_measures(self):
+        self.pdf_pet_metric.clear()
+        self.pdf_pet_metric.addItem("Palavras do corpus", ("field", "words_analytical"))
+        self.pdf_pet_metric.addItem("Palavras do PDF", ("field", "words_total"))
+        for label in self._term_labels:
+            self.pdf_pet_metric.addItem(f"Ocorrências no corpus: {label}", ("term", label))
+        self.btn_pdf_pet.setEnabled(bool(self.results))
+
+    def send_pdf_to_pet(self):
+        if not self.results or not self.btn_pdf_pet.isEnabled():
+            return
+        kind, key = self.pdf_pet_metric.currentData()
+        try:
+            points = [(int(r["year"]), r[key] if kind == "field" else
+                       r["term_results"][key]["analytical"]) for r in self.results]
+            analyze_series(points)
+        except (ValueError, TypeError, KeyError) as exc:
+            QMessageBox.warning(self, "Série dos PDFs inválida",
+                                f"Cada PDF precisa de ano válido e único. Confira a série na aba Séries PET.\n{exc}")
+            return
+        self.pet_tab.set_series(points, self.pdf_pet_metric.currentText(), "Contagem")
+        self.pet_tab.import_parameters = {
+            "origin": "PDFs", "measure": self.pdf_pet_metric.currentText(),
+            "search_terms": getattr(self, "_search_terms", []),
+            "files": [r["filename"] for r in self.results],
+        }
+        self.tabs.setCurrentWidget(self.pet_tab)
+
+    def closeEvent(self, event):
+        pdf_running = self.worker_thread is not None and self.worker_thread.isRunning()
+        if pdf_running or self.legislative_tab.is_processing():
+            if pdf_running:
+                self.cancel_processing()
+            self.legislative_tab.cancel_processing()
+            self.status_bar.showMessage("Cancelando processamento. Aguarde e feche a janela novamente.")
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     def show_about(self):
         QMessageBox.about(
             self,
             "Sobre — Contador de Palavras",
             "<h3>Contador de Palavras</h3>"
-            "<p>Análise padronizada de PDFs para pesquisa acadêmica.</p>"
-            f"<p>Versão {APP_VERSION} — análise textual e perfil de política climática.</p>"
+            "<p>Análise de PDFs, proposições legislativas e séries temporais para pesquisa acadêmica.</p>"
+            f"<p>Versão {APP_VERSION} — análise textual e estatísticas descritivas PET.</p>"
             "<hr>"
             "<p><b>Autoria</b></p>"
             "<ul style='margin-left:8px;'>"
@@ -372,6 +457,7 @@ class MainWindow(QMainWindow):
         self.results.clear()
         self.results_table.setRowCount(0)
         self.btn_export.setEnabled(False)
+        self.btn_pdf_pet.setEnabled(False)
         self.status_bar.showMessage("Lista limpa.")
 
     def start_processing(self):
@@ -396,6 +482,7 @@ class MainWindow(QMainWindow):
         self.btn_add.setEnabled(False)
         self.btn_clear.setEnabled(False)
         self.btn_export.setEnabled(False)
+        self.btn_pdf_pet.setEnabled(False)
         self.progress.setVisible(True)
         self.progress.setRange(0, len(self.pdf_files) * 100)
         self.progress.setValue(0)
@@ -485,6 +572,7 @@ class MainWindow(QMainWindow):
         self.btn_add.setEnabled(True)
         self.btn_clear.setEnabled(True)
         self.btn_export.setEnabled(len(results) > 0)
+        self._update_pdf_pet_measures()
         self.progress.setVisible(False)
         self.status_bar.showMessage(
             f"Concluído. {len(results)} arquivo(s) processado(s)."

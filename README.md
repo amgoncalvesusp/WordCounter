@@ -1,9 +1,9 @@
 # Contador de Palavras
 
-Software desktop standalone para contagem padronizada, auditável e replicável de palavras em arquivos PDF, com suporte específico a Mensagens ao Congresso Nacional e outros documentos institucionais. Desenvolvido para apoiar pesquisas acadêmicas em políticas públicas que exigem rigor metodológico na quantificação de corpus documentais.
+Software desktop standalone para contagem padronizada de palavras em PDFs, análise de proposições legislativas em CSV e análise de séries anuais para pesquisas sobre a Teoria do Equilíbrio Pontuado (PET). Desenvolvido para apoiar pesquisas acadêmicas em políticas públicas, com suporte a Mensagens ao Congresso Nacional e outros documentos institucionais.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20343113.svg)](https://doi.org/10.5281/zenodo.20343113)
-![Linguagem](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Linguagem](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows-lightgrey)
 ![GUI](https://img.shields.io/badge/GUI-PyQt6-brightgreen)
 ![OCR](https://img.shields.io/badge/OCR-Tesseract-yellow)
@@ -20,7 +20,7 @@ O Contador de Palavras realiza, em lote, a extração e contagem de palavras em 
 - **Indicadores de confiabilidade**: páginas com texto, páginas problemáticas, uso de OCR, grau de confiança
 - **Contagem opcional de termos e expressões** definidos pelo pesquisador
 
-Os resultados são apresentados em interface gráfica moderna e exportáveis em planilha XLSX formatada, com duas abas (resumo e detalhamento das páginas excluídas).
+Os resultados são apresentados em interface gráfica e exportáveis em planilhas XLSX com resumo, evidências e parâmetros conforme a análise selecionada. As abas **PDFs**, **Legislativo**, **Séries PET** e **Como usar** separam os fluxos. A interface e a documentação integrada estão disponíveis em português brasileiro.
 
 ## Principais funcionalidades
 
@@ -35,8 +35,12 @@ Os resultados são apresentados em interface gráfica moderna e exportáveis em 
 - Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud) e frequência de palavras-chave (com aba detalhada no XLSX)
 - Concordância KWIC: contexto ao redor de cada ocorrência dos termos de busca (aba "Concordância (KWIC)"), a unidade de contexto da análise de conteúdo
 - Perfil de política climática: matriz de setores, instrumentos, evidências textuais e lacunas do que cada documento reporta como política climática
+- Importação offline de CSV legislativo, com mapeamento de colunas, filtros por tipo/período e deduplicação por Casa/identificador
+- Busca booleana legislativa com `AND`, `OR`, `NOT`, parênteses, alternativas `|`, frases e curingas
+- Classificação por proposição com evidências, revisão manual e índice anual de atenção climática por Casa
+- Análise de mudanças anuais com excesso de curtose amostral corrigido, curtose correspondente e L-curtose
 - Exportação em XLSX formatado com cabeçalho estilizado, congelamento de painéis e linhas alternadas
-- Documentação integrada (atalho F1) explicando todas as regras e fluxos
+- Aba **Como usar** e atalho F1 com instruções práticas, fórmulas e interpretação das análises
 - Aplicação totalmente offline; nenhum dado é enviado a serviços externos
 
 ---
@@ -51,7 +55,7 @@ Os resultados são apresentados em interface gráfica moderna e exportáveis em 
 
 **Requisitos:**
 
-- Python 3.10 ou superior
+- Python 3.11 ou superior
 - Windows 10/11 (testado); Linux/macOS provavelmente compatíveis com ajustes
 - Tesseract-OCR instalado (opcional, apenas para PDFs escaneados)
 
@@ -80,13 +84,67 @@ O software detecta o Tesseract na inicialização e habilita/desabilita a opçã
 
 ## Como usar
 
-### Fluxo básico
+### PDFs: fluxo básico
 
 1. **Adicionar PDFs**: arraste arquivos para a área pontilhada ou clique em *Adicionar Arquivos*. Pastas também são aceitas (todos os PDFs da pasta são incluídos).
 2. **(Opcional) Definir termos de busca**: digite, no painel direito, um termo por linha. Use `*` para variações (`climátic*`), `|` para agrupar variantes na mesma coluna e aspas para busca literal.
 3. **(Opcional) Marcar OCR**: ative se houver PDFs escaneados (apenas imagem).
 4. **Processar**: clique em *▶ Processar PDFs*.
 5. **Exportar**: ao final, clique em *⬇ Exportar XLSX* para salvar os resultados.
+6. **Enviar à PET**: após processar, escolha **Palavras do corpus**, **Palavras do PDF** ou **Ocorrências no corpus: &lt;termo&gt;** e clique em **Enviar contagens para PET**. A série é enviada na unidade **Contagem**.
+
+Para corpora que não sejam Mensagens Presidenciais, desative **Detectar presidente**. Confira os anos detectados e as páginas excluídas antes de analisar a série.
+
+O envio à PET exige **um PDF por ano válido e único**. Anos ausentes ou duplicados precisam ser preparados ou ajustados manualmente nos pares ano/valor da aba **Séries PET**; o programa não agrega PDFs automaticamente. As contagens enviadas não representam proporção de texto climático. A cobertura da taxonomia também não é transformada automaticamente em atenção climática.
+
+### Legislativo: importar CSV e obter atenção anual
+
+1. Baixe a produção completa do período na fonte oficial. Use a aba **Legislativo** para adicionar o CSV; a importação não faz coleta automática por API.
+2. Confira a amostra e escolha a Casa, o identificador, a data/ano de apresentação, o tipo e as colunas textuais disponíveis, como `ementa`, `ementaDetalhada`, `keywords`, indexação ou resumo. Prefira a data de apresentação: o ano da numeração pode representar outro evento.
+3. Defina os tipos e o período. Confira `PLS` e `PLC` em séries históricas, além de `PL`, `PEC`, `PLP` e `MPV`. Numerador e denominador usam o mesmo recorte.
+4. Escreva uma regra booleana e processe. Exemplo:
+
+   ```text
+   ("mudanças climáticas" OR "mudanças do clima") OR (carbono AND emiss*)
+   ```
+
+5. Confira os termos, campos e trechos encontrados. Revise amostras tanto dos identificados quanto dos não identificados; registre decisões manuais e, se necessário, restaure a classificação automática.
+6. Exporte as proposições, evidências, revisões, resumo anual e parâmetros. Para analisar mudanças, envie uma Casa por vez à aba **Séries PET**.
+
+**Regras da busca:** `NOT` tem precedência sobre `AND`, que tem precedência sobre `OR`; `|` equivale a `OR`. Parênteses deixam a regra explícita. Condições de um `AND` podem estar em campos diferentes da mesma proposição, mas uma frase não atravessa colunas. A busca ignora acentos e caixa. Fora de aspas, `*` aceita variações; dentro de aspas, `*` e `|` são literais. A sintaxe booleana pertence ao fluxo legislativo; o campo de termos dos PDFs mantém uma expressão por linha.
+
+**Índice de atenção climática anual (%) = 100 × proposições climáticas únicas ÷ total de proposições únicas do recorte.** Exemplo: 80 proposições climáticas entre 4.000 elegíveis = 2%. Dez ocorrências na mesma proposição continuam contando uma proposição.
+
+A deduplicação usa Casa e identificador. Casas diferentes permanecem separadas, evitando somar automaticamente a mesma matéria durante a tramitação bicameral. Duplicatas com ano ou tipo conflitante precisam de correção antes da análise.
+
+Sem texto para buscar, o registro fica **pendente**. Pendentes permanecem no total; enquanto existirem, o percentual definitivo fica indisponível. O **mínimo identificado (%)** mostra os positivos já identificados divididos pelo total do recorte, incluindo os pendentes. Preencha os textos ou revise os registros antes de formar uma série definitiva. A decisão automática e as evidências são preservadas após revisão.
+
+**Limites do indicador:** identifica correspondência às regras, não verdade temática definitiva. “Não identificado” não comprova ausência de conteúdo climático. Projetos contrários a uma política climática também podem indicar atenção; a medida não equivale a apoio, aprovação ou implementação.
+
+**Fontes:** a [Câmara disponibiliza arquivos por ano de apresentação](https://dadosabertos.camara.leg.br/swagger/api.html?tab=staticfile). No [catálogo do Senado](https://www12.senado.leg.br/dados-abertos/conjuntos?grupo=projetos-e-materias&portal=Legislativo), alguns CSVs incluem apenas matérias atualmente em tramitação: não representam toda a produção histórica. A [identificação de projetos mudou em 2019](https://www12.senado.leg.br/manualdecomunicacao/estilos/pl); confira a cobertura histórica e as siglas antes de comparar anos.
+
+### Séries PET: calcular e interpretar mudanças
+
+1. Na aba **Séries PET**, receba o resumo de uma Casa ou importe um CSV com ano e valor. Também é possível digitar um par `ano;valor` por linha, por exemplo `2020;2,0`.
+2. Dê nome à série e escolha a unidade: percentual, contagem ou outra unidade. Não misture conceitos entre anos.
+3. Escolha a mudança: **diferença** ou **variação relativa**. Calcule e confira níveis, transições válidas e avisos.
+4. Exporte a série, mudanças, estatísticas e parâmetros para auditoria.
+
+| Medida | Cálculo e interpretação |
+|---|---|
+| Diferença | Valor atual − anterior. De 2% para 3% = **+1 ponto percentual**; contagens mantêm a unidade original. |
+| Variação relativa | `100 × (atual − anterior) / anterior`. De 2% para 3% = **+50%**. Base zero gera transição indefinida, sem pseudocontagem. |
+| Excesso de curtose | Estimador amostral corrigido, compatível com `CURT` do Excel. Referência da distribuição normal: **0**. Sensível a mudanças extremas. |
+| Curtose correspondente | Excesso corrigido + 3. Referência normal: **3**. Confira a convenção antes de comparar com publicações. |
+| L-curtose | Razão entre momentos-L amostrais `l4/l2`. Referência normal: aproximadamente **0,1226**. Menos sensível a extremos; não é curtose de dados logaritmizados. |
+
+As estatísticas são calculadas sobre as **mudanças entre anos consecutivos**, não sobre os níveis de atenção. Anos ausentes não viram zeros e não são conectados como se a mudança fosse anual. Com menos de quatro mudanças válidas ou mudanças constantes, as estatísticas ficam indisponíveis. O aviso de menos de 20 mudanças é uma cautela heurística sobre séries curtas, não um tamanho mínimo universal nem um teste de significância.
+
+Curtose elevada pode ser compatível com mudanças pontuadas, mas não confirma a PET nem identifica sua causa. As referências da distribuição normal não são limiares de significância. Examine a sequência temporal, eventos, cobertura, zeros, lacunas e sensibilidade à classificação. A análise não comprova atenção desproporcional às necessidades sociais sem medir também essas necessidades.
+
+Para **Mensagens ao Congresso**, importe uma série cujo indicador esteja definido e validado. Contagem de termos não se converte automaticamente em percentual de texto climático, pois expressões podem se sobrepor ou repetir. A cobertura da taxonomia do perfil climático também é uma medida diferente da atenção textual ou legislativa.
+
+Referências: [Microsoft — função CURT](https://support.microsoft.com/pt-pt/excel/functions/kurt-function); [Baumgartner e colaboradores — Punctuated Equilibrium in Comparative Perspective](https://fbaum.unc.edu/articles/Comp_friction/PE_in_Comparative_Perspective_AJPS_Identified.pdf); [Kaplaner e Steinebach — discussão dos limites da curtose e L-curtose](https://doi.org/10.1017/pan.2021.25).
 
 ### Sintaxe da busca de termos
 
@@ -382,7 +440,7 @@ pytest                       # executa a suíte
 pytest --cov=src/core        # com relatório de cobertura
 ```
 
-Cobertura atual do código próprio (excluindo a biblioteca vendorizada LeIA): **~92%**.
+A cobertura do código próprio exclui a biblioteca vendorizada LeIA; consulte o relatório gerado pela suíte para o valor da versão em teste. Os testes de interface podem ser executados com `QT_QPA_PLATFORM=offscreen`.
 
 ---
 
@@ -391,6 +449,8 @@ Cobertura atual do código próprio (excluindo a biblioteca vendorizada LeIA): *
 - A detecção de páginas pré-textuais é heurística e pode produzir falsos positivos em layouts atípicos. Verifique sempre a aba *Páginas Excluídas* do XLSX exportado.
 - A detecção automática de ano e presidente baseia-se em padrões textuais; em PDFs com baixa qualidade de extração, pode falhar (campos retornam vazios).
 - O OCR adiciona tempo significativo de processamento (segundos por página). Use apenas quando necessário.
+- A classificação legislativa depende das colunas textuais e da regra usada. Revise amostras positivas e negativas; arquivos incompletos e mudanças de indexação afetam o índice anual.
+- As estatísticas PET são descritivas. Não demonstram causalidade nem confirmam a teoria automaticamente; séries curtas e lacunas exigem cautela.
 
 ---
 

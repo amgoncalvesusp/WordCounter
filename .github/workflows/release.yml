@@ -39,8 +39,8 @@ jobs:
       - name: Run tests
         shell: cmd
         run: |
-          py -3.11 -m pip install -r requirements-dev.txt
-          py -3.11 -m pytest --cov --cov-report=term
+          py -3.11 -m pip install -r requirements-dev.txt -c requirements-build.txt
+          py -3.11 -m pytest --cov --cov-report=term --cov-fail-under=80
 
       - name: Build executable
         shell: powershell
@@ -51,18 +51,24 @@ jobs:
           cmd /c build.bat
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Rename executable
+      - name: Prepare release assets and checksum
         shell: powershell
         run: |
           Copy-Item `
             -LiteralPath "dist\ContadorPalavras.exe" `
             -Destination "dist\ContadorPalavras-${{ github.ref_name }}.exe"
+          $asset = "dist\ContadorPalavras-${{ github.ref_name }}.exe"
+          $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path -Leaf $asset)" | Set-Content `
+            -LiteralPath "$asset.sha256" -Encoding ascii
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ContadorPalavras-${{ github.ref_name }}
-          path: dist/ContadorPalavras-${{ github.ref_name }}.exe
+          path: |
+            dist/ContadorPalavras-${{ github.ref_name }}.exe
+            dist/ContadorPalavras-${{ github.ref_name }}.exe.sha256
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -70,26 +76,24 @@ jobs:
           name: Contador de Palavras ${{ github.ref_name }}
           overwrite_files: true
           body: |
-            ## Correcoes
+            ## Novidades
 
-            - Corrigido o aviso do Excel "Registros Removidos: Formula de parte
-              de /xl/worksheets/sheetN.xml". Trechos extraidos do PDF que comecam
-              com "=" eram gravados como formula e descartados na abertura do
-              arquivo; agora todo texto exportado e gravado como texto.
+            - Aba Legislativo: importação de CSV com mapeamento, busca booleana,
+              evidências, revisão manual, deduplicação e índice anual por Casa.
+            - Aba Séries PET: mudanças anuais, excesso de curtose corrigido e
+              L-curtose; entrada por CSV, digitação ou contagens dos PDFs.
+            - Exportação XLSX com textos, decisões, fontes, regras e parâmetros.
+            - Aba Como usar em português, com passos rápidos e interpretação
+              das funcionalidades e estatísticas.
+            - Pillow e setuptools atualizados para corrigir avisos da auditoria.
 
-            ## Funcionalidades
+            ## Validação e uso
 
-            - Busca de termos com curinga `*`: `climatic*` encontra climatica,
-              climatico, climaticas e climaticos (plural, masculino e feminino).
-            - Busca com alternativas usando `|`: `mudanc* d* clima | mudanc*
-              climatic*` soma todas as variantes em uma unica coluna.
-            - Aspas passam a significar busca literal (sem `*` e sem `|`).
-            - Curingas e alternativas valem tambem na aba de concordancia (KWIC).
-            - Exemplos na interface e ajuda (F1) atualizados, explicando quando
-              usar aspas e como buscar variacoes.
-
-            ## Validacao
-
-            - Testes automatizados executados no workflow.
-            - Executavel Windows gerado com PyInstaller.
-          files: dist/ContadorPalavras-${{ github.ref_name }}.exe
+            - Testes automatizados com cobertura mínima de 80% do núcleo.
+            - Executável Windows com OCR Tesseract e checksum SHA-256.
+            - Desenvolvimento a partir do código requer Python 3.11 ou superior.
+            - Revise a classificação temática e a completude dos dados. As
+              estatísticas são descritivas e não confirmam a PET isoladamente.
+          files: |
+            dist/ContadorPalavras-${{ github.ref_name }}.exe
+            dist/ContadorPalavras-${{ github.ref_name }}.exe.sha256

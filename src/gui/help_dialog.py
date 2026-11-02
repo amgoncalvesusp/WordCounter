@@ -1,6 +1,8 @@
 """In-app help dialog."""
 
-from PyQt6.QtWidgets import QDialog, QHBoxLayout, QPushButton, QTextBrowser, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QDialog, QHBoxLayout, QPushButton, QTextBrowser, QVBoxLayout, QWidget,
+)
 
 
 HELP_HTML = """
@@ -24,16 +26,73 @@ HELP_HTML = """
 
 <h1>Como usar o Contador de Palavras</h1>
 
-<p>Software para contagem padronizada e auditável de palavras em PDFs. Desenvolvido para pesquisa acadêmica em políticas públicas, com suporte específico a Mensagens Presidenciais ao Congresso Nacional.</p>
+<p>Use as abas <b>PDFs</b>, <b>Legislativo</b> e <b>Séries PET</b> para preparar dados e estudar atenção ao longo do tempo. Esta documentação acompanha o idioma disponível no programa: português brasileiro.</p>
 
-<h2>Fluxo básico de uso</h2>
+<p><a href="#pdfs">PDFs</a> · <a href="#legislativo">Legislativo</a> ·
+<a href="#pet">Séries PET e estatísticas</a> · <a href="#metricas">Métricas textuais</a></p>
+
+<h2 id="pdfs">PDFs: início rápido</h2>
 <ol>
     <li><b>Adicionar PDFs</b> — Arraste arquivos para a área pontilhada ou clique em <code>Adicionar Arquivos</code>.</li>
     <li><b>(Opcional) Definir termos de busca</b> — Digite termos no campo de busca, um por linha.</li>
     <li><b>(Opcional) Marcar OCR</b> — Ative se algum PDF for escaneado (apenas imagem).</li>
     <li><b>Processar</b> — Clique em <code>▶ Processar PDFs</code>. O progresso aparece na barra inferior.</li>
     <li><b>Exportar</b> — Após conclusão, clique em <code>⬇ Exportar XLSX</code>.</li>
+    <li><b>Enviar à PET</b> — Após processar, escolha <code>Palavras do corpus</code>, <code>Palavras do PDF</code> ou <code>Ocorrências no corpus: &lt;termo&gt;</code> e clique em <code>Enviar contagens para PET</code>. A série chega à aba <b>Séries PET</b> na unidade <b>Contagem</b>.</li>
 </ol>
+<p>Para documentos que não sejam Mensagens Presidenciais, desative <b>Detectar presidente</b>. O ano detectado e as páginas excluídas exigem conferência no XLSX. O botão <b>Cancelar</b> interrompe o lote; exportações parciais, quando disponíveis, não representam o corpus completo.</p>
+<p>O envio exige <b>um PDF por ano válido e único</b>. Se os anos estiverem ausentes ou duplicados, prepare ou ajuste manualmente os pares ano/valor na aba <b>Séries PET</b>; o programa não agrega PDFs automaticamente. As contagens enviadas <b>não são proporção de texto climático</b>. A cobertura da taxonomia não é transformada automaticamente em atenção climática.</p>
+
+<h2 id="legislativo">Legislativo: importar, classificar e revisar</h2>
+<ol>
+    <li>Baixe a produção completa do período na fonte oficial; evite arquivos previamente filtrados por palavras climáticas.</li>
+    <li>Adicione o <b>CSV</b> e confira a amostra. Escolha a Casa (Câmara ou Senado), o identificador único, a data de apresentação ou ano, o tipo e as colunas textuais: <b>ementa, ementa detalhada, indexação, resumo ou keywords</b>, conforme o arquivo.</li>
+    <li>Prefira a <b>data de apresentação</b> quando disponível. O ano da numeração do projeto pode ser diferente do ano de apresentação na Casa.</li>
+    <li>Defina os mesmos tipos e anos para todo o recorte. Para uma série histórica, confira também <b>PLS</b> e <b>PLC</b>, além de <b>PL, PEC, PLP e MPV</b>. Tipos não selecionados ficam fora tanto do numerador quanto do denominador.</li>
+    <li>Digite uma expressão booleana e processe. Leia os campos, termos e trechos que sustentam a identificação. Uma proposição conta uma vez, mesmo com várias ocorrências.</li>
+    <li>Revise uma amostra de identificados e de não identificados. Use a revisão para marcar <b>sim</b> ou <b>não</b>, com nota quando necessário; escolha <b>restaurar automático</b> para retirar uma revisão. A decisão automática e suas evidências são preservadas.</li>
+    <li>Confira o resumo anual e exporte XLSX. Envie uma Casa por vez à aba <b>Séries PET</b>, mantendo o rótulo e a unidade da série.</li>
+</ol>
+<p><b>Exemplo de regra:</b></p>
+<pre>("mudanças climáticas" OR "mudanças do clima") OR (carbono AND emiss*)</pre>
+<ul>
+    <li><code>OR</code> ou <code>|</code>: pelo menos uma alternativa.</li>
+    <li><code>AND</code>: ambas as condições; podem estar em colunas diferentes da mesma proposição.</li>
+    <li><code>NOT</code>: ausência da condição seguinte. Use exclusões apenas com justificativa metodológica.</li>
+    <li>Precedência: <code>NOT</code>, depois <code>AND</code>, depois <code>OR</code>. Parênteses deixam a regra explícita.</li>
+    <li><code>climátic*</code> aceita flexões. Aspas tornam a expressão literal; dentro delas, <code>*</code> e <code>|</code> são caracteres comuns. A busca ignora acentos e caixa. Uma frase não atravessa duas colunas.</li>
+</ul>
+<p><b>Estados:</b> identificado = regra satisfeita; não identificado = texto disponível sem correspondência; <b>Pendentes</b> = ausência de texto para classificar. Ausência de termo não comprova ausência de conteúdo climático. Projetos favoráveis e contrários à política climática podem representar atenção ao tema; o resultado não mede apoio nem implementação.</p>
+<p><b>Índice de atenção climática (%) = 100 × proposições climáticas únicas ÷ total de proposições únicas do recorte.</b> Exemplo: 80 em 4.000 = 2%. A deduplicação usa Casa e identificador; a mesma matéria em Casas diferentes não é somada automaticamente.</p>
+<p>Enquanto houver pendentes, o percentual definitivo fica indisponível. O <b>mínimo identificado (%)</b> mostra os positivos já identificados divididos pelo total, incluindo pendentes. Complete os textos ou revise os registros antes de formar uma série definitiva.</p>
+<div class="warn">O catálogo do Senado informa que alguns CSVs incluem somente <b>matérias atualmente em tramitação</b>; não use esses arquivos isoladamente como produção histórica total. Registre fonte, data da coleta, período, tipos, colunas e regra. Alterações na indexação também podem afetar comparações entre anos.</div>
+
+<h2 id="pet">Séries PET: início rápido</h2>
+<ol>
+    <li>Receba o resumo legislativo de uma Casa ou importe um CSV de série anual. Também é possível digitar pares <code>ano;valor</code>, um por linha, por exemplo <code>2020;2,0</code>.</li>
+    <li>Identifique a série e sua unidade: percentual, contagem ou outra unidade. Mantenha o mesmo conceito em todos os anos.</li>
+    <li>Escolha <b>diferença</b> ou <b>variação relativa</b> e calcule. Confira níveis, transições anuais, número de mudanças válidas e avisos antes das estatísticas.</li>
+    <li>Exporte níveis, mudanças, estatísticas e parâmetros. As medidas resumem a distribuição das <b>mudanças</b>, não a distribuição dos níveis de atenção.</li>
+</ol>
+<p>Para Mensagens ao Congresso, uma série pode conter uma contagem explicitamente definida ou um percentual temático previamente validado. Somar termos encontrados não produz automaticamente percentual de texto climático: expressões podem se sobrepor, repetir-se ou ter sentidos diferentes. A cobertura da taxonomia do perfil climático também não serve como percentual de atenção textual.</p>
+
+<h3>Escolher a mudança e interpretar</h3>
+<ul>
+    <li><b>Diferença:</b> valor atual − valor anterior. De 2% para 3% = <b>+1 ponto percentual</b>; em contagens, a diferença permanece na unidade original.</li>
+    <li><b>Variação relativa (%):</b> 100 × (valor atual − valor anterior) ÷ valor anterior. De 2% para 3% = <b>+50%</b>. Essa medida é diferente de pontos percentuais.</li>
+    <li>Usam-se somente <b>anos consecutivos</b>. Falta de ano não é preenchida com zero nem tratada como mudança de um ano.</li>
+    <li><b>base zero:</b> variação relativa é indefinida; a transição fica sem valor e gera aviso. Não se adiciona pseudocontagem. Na diferença, passar de zero para um é uma mudança válida de +1.</li>
+</ul>
+
+<h3>Curtose, excesso e L-curtose</h3>
+<ul>
+    <li><b>Excesso de curtose amostral corrigido:</b> mesma convenção da função <code>CURT</code> do Excel. A distribuição normal tem referência <b>0</b>. Valores maiores sugerem maior peso de mudanças extremas nas caudas; poucos extremos podem dominar o resultado.</li>
+    <li><b>Curtose correspondente (Pearson):</b> excesso corrigido + 3. A referência normal é <b>3</b>. Não compare diretamente esse número com um excesso publicado sem conferir a convenção.</li>
+    <li><b>L-curtose amostral:</b> razão <code>l4/l2</code> entre momentos-L amostrais. A referência normal é aproximadamente <b>0,1226</b>. É menos sensível a extremos que a curtose usual, mas não elimina incerteza nem viés da seleção dos dados. Não é curtose de valores logaritmizados.</li>
+    <li>Com <b>menos de quatro</b> mudanças válidas, ou com mudanças constantes, as estatísticas ficam indisponíveis. Série de níveis constante também produz mudanças constantes.</li>
+    <li>Menos de <b>20 mudanças</b> gera aviso de série curta: é um alerta heurístico de cautela, não tamanho mínimo universal nem teste de significância.</li>
+</ul>
+<div class="warn">Curtose elevada pode ser compatível com mudanças pontuadas, mas <b>não confirma</b> a Teoria do Equilíbrio Pontuado (PET) por si só. Observe a sequência temporal, eventos, qualidade do universo, zeros, lacunas e sensibilidade às regras. Os valores de referência da normal não são limiares de significância. O software não estima causalidade, não detecta automaticamente o ano de uma pontuação e não mede desproporção frente às necessidades sociais sem uma medida dessas necessidades.</div>
 
 <h2>Busca de termos e expressões</h2>
 
@@ -119,6 +178,17 @@ adaptação
     A detecção é baseada em palavras-chave e heurísticas. Pode haver falsos positivos em layouts atípicos. Confira o resumo de páginas excluídas na aba <i>Páginas Excluídas</i> do arquivo XLSX exportado.
 </div>
 
+<h2 id="metricas">Outras análises de PDFs: uso e interpretação</h2>
+<ul>
+    <li><b>Concordância (KWIC):</b> informe termos e ative a opção para exportar o contexto ao redor das ocorrências. Leia esses trechos para avaliar o sentido; frequência isolada não é análise de conteúdo concluída.</li>
+    <li><b>Sentimento (LeIA/VADER-PT):</b> gera escore por sentença e média no documento. Positivo ≥ 0,05; negativo ≤ −0,05; neutro entre esses limites. O XLSX permite conferir sentenças. Valência lexical não demonstra apoio político, eficácia da política ou posição do autor; negações e linguagem técnica podem ser mal interpretadas.</li>
+    <li><b>Legibilidade (Flesch-PT):</b> índice = 248,835 − 1,015 × palavras/frases − 84,6 × sílabas/palavras. Maior índice sugere leitura mais fácil; ≥75 muito fácil, 50–75 fácil, 25–50 difícil, &lt;25 muito difícil. Contagem silábica é aproximada; não mede qualidade científica.</li>
+    <li><b>Diversidade lexical:</b> TTR = palavras distintas/tokens; Guiraud = palavras distintas/√tokens. Maior valor indica maior variedade lexical. TTR depende do tamanho do texto; compare corpora de extensão semelhante.</li>
+    <li><b>Palavras-chave:</b> lista as palavras de conteúdo mais frequentes após excluir stopwords. Use a aba de frequências para explorar temas; palavra frequente não é necessariamente a mais relevante.</li>
+    <li><b>Perfil climático:</b> setores/instrumentos reportados diretamente, menções indiretas e lacunas segundo o texto. A <b>cobertura da taxonomia</b> é a fração de itens esperados reportados, não a parcela climática do texto nem o índice legislativo anual.</li>
+    <li><b>Metadados:</b> ano e presidente são detectados por padrões. Confira-os; desative presidente quando não fizer parte do corpus. Grau de confiança indica disponibilidade de texto, não precisão semântica de toda a análise.</li>
+</ul>
+
 <h2>OCR (PDFs escaneados)</h2>
 
 <p>PDFs sem texto pesquisável (apenas imagem) requerem OCR para extrair conteúdo. O software usa <b>Tesseract</b> com idioma português.</p>
@@ -175,12 +245,51 @@ adaptação
     <li><span class="key">Ctrl+O</span> — Adicionar arquivos</li>
     <li><span class="key">Ctrl+E</span> — Exportar XLSX</li>
     <li><span class="key">Ctrl+Q</span> — Sair</li>
-    <li><span class="key">F1</span> — Esta tela de ajuda</li>
+    <li><span class="key">F1</span> — Como usar</li>
 </ul>
 
 <h2>Reprodutibilidade</h2>
 <p>Toda a contagem segue regras determinísticas. Processar os mesmos PDFs nas mesmas condições produz exatamente os mesmos resultados. Diferenças entre execuções só ocorrem se houver OCR sobre páginas marginais (qualidade de imagem pode variar a saída).</p>
+<p>Nas análises legislativas e PET, preserve os arquivos originais, a versão do programa, as regras, os mapeamentos e as revisões. As exportações registram parâmetros para apoiar auditoria. O processamento é local; importar CSV não coleta automaticamente dados dos portais.</p>
+
+<h2>Fontes para conferir o método</h2>
+<ul>
+    <li><a href="https://dadosabertos.camara.leg.br/swagger/api.html?tab=staticfile">Câmara: arquivos de proposições por ano e cobertura</a>.</li>
+    <li><a href="https://www12.senado.leg.br/dados-abertos/conjuntos?grupo=projetos-e-materias&amp;portal=Legislativo">Senado: catálogo de Projetos e Matérias</a>.</li>
+    <li><a href="https://support.microsoft.com/pt-pt/excel/functions/kurt-function">Microsoft: função CURT</a>.</li>
+    <li><a href="https://fbaum.unc.edu/articles/Comp_friction/PE_in_Comparative_Perspective_AJPS_Identified.pdf">Baumgartner e colaboradores: Punctuated Equilibrium in Comparative Perspective</a>.</li>
+    <li><a href="https://doi.org/10.1017/pan.2021.25">Kaplaner e Steinebach: limites da curtose e L-curtose na PET</a>.</li>
+</ul>
 """
+
+
+def create_help_widget(parent=None) -> QWidget:
+    """Build the same Portuguese guide for an embedded tab or the F1 dialog."""
+    browser = QTextBrowser(parent)
+    browser.setObjectName("usageGuide")
+    browser.setOpenExternalLinks(True)
+    browser.setHtml(HELP_HTML)
+    browser.setStyleSheet("""
+        QTextBrowser {
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            border: 1px solid #313244;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 11pt;
+        }
+        QScrollBar:vertical {
+            background: #181825;
+            width: 12px;
+            border-radius: 6px;
+        }
+        QScrollBar::handle:vertical {
+            background: #45475a;
+            border-radius: 6px;
+            min-height: 30px;
+        }
+    """)
+    return browser
 
 
 class HelpDialog(QDialog):
@@ -193,30 +302,7 @@ class HelpDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        browser = QTextBrowser()
-        browser.setOpenExternalLinks(True)
-        browser.setHtml(HELP_HTML)
-        browser.setStyleSheet("""
-            QTextBrowser {
-                background-color: #1e1e2e;
-                color: #cdd6f4;
-                border: 1px solid #313244;
-                border-radius: 8px;
-                padding: 16px;
-                font-size: 11pt;
-            }
-            QScrollBar:vertical {
-                background: #181825;
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background: #45475a;
-                border-radius: 6px;
-                min-height: 30px;
-            }
-        """)
-        layout.addWidget(browser)
+        layout.addWidget(create_help_widget(self))
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
